@@ -22,6 +22,7 @@ import { openPicker } from './ui/picker';
 import { fuzzy, highlight } from './core/fuzzy';
 import { escapeHtml } from './ui/dom';
 import { dirname, noteName } from './core/paths';
+import { GraphView } from './graph/graphView';
 
 export interface Command {
   id: string;
@@ -143,6 +144,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       'div',
       { class: 'topbar-actions' },
       tb('search', 'Greitas perjungiklis (Ctrl+O)', () => this.quickSwitcher()),
+      tb('graph', 'Grafo vaizdas (Ctrl+G)', () => this.openGraph()),
       tb('command', 'Komandų paletė (Ctrl+P)', () => this.commandPalette()),
     );
     const topbar = h(
@@ -252,6 +254,46 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     this.persist();
   }
 
+  createGraphView(nav: { back(): void; canBack(): boolean }) {
+    const lastNote = () => {
+      for (const p of [this.ws.activePane, ...this.ws.panes]) {
+        const t = p.active;
+        if (t?.loc.kind === 'note') return t.loc.path;
+        const prev = t?.history.slice(0, t.idx).reverse().find((l) => l.kind === 'note');
+        if (prev?.kind === 'note') return prev.path;
+      }
+      return null;
+    };
+    const gv = new GraphView({
+      getData: () => this.index.graph(),
+      getActive: lastNote,
+      onOpen: (id, newTab) => {
+        if (id.startsWith('missing:')) {
+          const node = this.index.graph().nodes.find((n) => n.id === id);
+          if (node) this.openLink(node.label, { newTab });
+        } else this.openPath(id, newTab);
+      },
+      onBack: () => nav.back(),
+      canBack: () => nav.canBack(),
+      subscribe: (cb) => this.index.on('updated', debounce(cb, 300)),
+    });
+    return { el: gv.el, destroy: () => gv.destroy(), refresh: () => gv.refresh(), focus: (p: string | null) => gv.focus(p) };
+  }
+
+  /** Atidaro grafą (jei jau atidarytas – perjungia į jį). */
+  openGraph(newTab = false) {
+    for (const p of this.ws.panes) {
+      const t = p.tabs.find((x) => x.loc.kind === 'graph');
+      if (t && !newTab) {
+        this.ws.setActivePane(p);
+        p.activate(t);
+        return;
+      }
+    }
+    this.ws.open({ kind: 'graph' }, { newTab: true });
+    this.closeDrawers();
+  }
+
   // ---------- Paieška ir komandos ----------
 
   quickSwitcher() {
@@ -306,6 +348,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       { id: 'switcher', name: 'Greitas perjungiklis: atidaryti užrašą', icon: 'search', hotkey: 'Ctrl+O', run: () => this.quickSwitcher() },
       { id: 'search', name: 'Ieškoti visuose užrašuose', icon: 'search', hotkey: 'Ctrl+Shift+F', run: () => this.openSearch() },
       { id: 'mode', name: 'Perjungti šaltinį / peržiūrą', icon: 'eye', hotkey: 'Ctrl+E', run: () => ws.activePane.toggleMode() },
+      { id: 'graph', name: 'Atidaryti grafo vaizdą', icon: 'graph', hotkey: 'Ctrl+G', run: () => this.openGraph() },
       { id: 'tags', name: 'Rodyti žymas', icon: 'hash', run: () => this.showLeftPanel('tags', true) },
       { id: 'files', name: 'Rodyti failų medį', icon: 'folder', run: () => this.showLeftPanel('files', true) },
       { id: 'left', name: 'Rodyti / slėpti kairįjį skydelį', icon: 'panel-left', run: () => this.toggleSide('left') },
@@ -343,6 +386,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     const p = this.ws.activePath();
     this.tree.setActive(p);
     this.backlinks.setPath(p);
+    if (p) this.ws.panes.forEach((x) => x.focusGraph(p));
     document.title = p ? `${p.split('/').pop()!.replace(/\.md$/, '')} – Frankenstein` : 'Frankenstein';
   }
 
@@ -433,6 +477,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     if (e.altKey && !mod && e.key === 'ArrowRight') return run(() => this.ws.activePane.forward());
     if (mod && e.shiftKey && k === 'f') return run(() => this.openSearch());
     if (mod && !e.shiftKey && k === 'o') return run(() => this.quickSwitcher());
+    if (mod && !e.shiftKey && k === 'g') return run(() => this.openGraph());
     if (mod && !e.shiftKey && k === 'p') return run(() => this.commandPalette());
     if (e.altKey && !mod && e.code === 'KeyN') return run(() => this.newNote());
     if (e.altKey && !mod && e.code === 'KeyW') return run(() => this.commands().find((c) => c.id === 'tab.close')!.run());

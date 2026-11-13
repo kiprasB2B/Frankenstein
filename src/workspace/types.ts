@@ -51,7 +51,7 @@ export interface WorkspaceHost {
   onActiveChange(): void;
   /** Kviečiama, kai reikia išsaugoti darbo vietos būseną. */
   persist(): void;
-  createGraphView?(host: HTMLElement): { el: HTMLElement; destroy(): void; refresh?(): void; focus?(path: string | null): void };
+  createGraphView?(nav: { back(): void; canBack(): boolean }): { el: HTMLElement; destroy(): void; refresh?(): void; focus?(path: string | null): void };
 }
 
 export interface EmptyViewFactory {

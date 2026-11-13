@@ -1374,6 +1374,94 @@ kbd {
   margin-right: 3px;
 }
 
+/* ---- Grafas ---- */
+.graph-view {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
+}
+.graph-stage {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  touch-action: none;
+}
+.graph-canvas {
+  display: block;
+}
+.graph-toolbar {
+  position: absolute;
+  top: var(--s-3);
+  left: var(--s-3);
+  right: var(--s-3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  pointer-events: none;
+}
+.graph-toolbar > * {
+  pointer-events: auto;
+}
+.graph-toolbar .back-link {
+  margin: 0;
+  background: rgba(var(--rgb-bg), 0.8);
+  border: 1px solid var(--c-line);
+}
+.graph-filter {
+  width: 200px;
+  height: 28px;
+  padding: 0 var(--s-2);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  background: rgba(var(--rgb-bg), 0.8);
+  outline: none;
+  font-size: var(--fs-sm);
+  transition: all var(--dur);
+}
+.graph-filter:focus {
+  border-color: var(--c-accent);
+  box-shadow: var(--glow-sm);
+}
+.chip-toggle {
+  height: 28px;
+  padding: 0 var(--s-3);
+  border: 1px solid var(--c-line);
+  border-radius: 999px;
+  background: rgba(var(--rgb-bg), 0.8);
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+  cursor: pointer;
+  transition: all var(--dur) var(--ease);
+}
+.chip-toggle:hover {
+  color: var(--c-text);
+  border-color: var(--c-line-strong);
+}
+.chip-toggle.on {
+  color: var(--c-accent);
+  border-color: rgba(var(--rgb-accent), 0.6);
+  box-shadow: var(--glow-sm);
+}
+.graph-toolbar .icon-btn {
+  background: rgba(var(--rgb-bg), 0.8);
+  border-color: var(--c-line);
+}
+.graph-hint {
+  position: absolute;
+  left: var(--s-3);
+  right: var(--s-3);
+  bottom: var(--s-3);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+  pointer-events: none;
+}
+
 /* ---- Tuščias skirtukas ---- */
 .empty-inner {
   text-align: center;

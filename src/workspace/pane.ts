@@ -178,7 +178,10 @@ export class Pane {
       return;
     }
     if (t.loc.kind === 'graph') {
-      if (!this.graph && this.host.createGraphView) this.graph = this.host.createGraphView(this.body);
+      if (!this.graph && this.host.createGraphView) this.graph = this.host.createGraphView({
+          back: () => (t.idx > 0 ? this.back() : this.closeTab(t)),
+          canBack: () => t.idx > 0,
+        });
       if (this.graph) this.body.append(this.graph.el);
       return;
     }
@@ -195,6 +198,10 @@ export class Pane {
     }
     this.body.append(this.noteView.el);
     this.noteView.show(t);
+  }
+
+  focusGraph(path: string | null) {
+    this.graph?.focus?.(path);
   }
 
   refreshGraph() {
