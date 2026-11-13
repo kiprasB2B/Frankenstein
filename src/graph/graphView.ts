@@ -2,6 +2,8 @@ import { h } from '../ui/dom';
 import { icon } from '../ui/icons';
 import { ForceLayout2D } from './forceLayout2d';
 import { CanvasRenderer2D } from './canvasRenderer2d';
+import { ForceLayout3D } from './forceLayout3d';
+import { CanvasRenderer3D } from './canvasRenderer3d';
 import type { Camera, GraphData, Layout, Renderer, RenderState, SimNode } from './types';
 
 export interface GraphViewOptions {
@@ -12,20 +14,23 @@ export interface GraphViewOptions {
   canBack(): boolean;
   /** Įvykių prenumerata, grąžina atsisakymo funkciją. */
   subscribe(cb: () => void): () => void;
+  initialMode?: GraphMode;
 }
 
-export type GraphMode = '2d'; // ateityje: | '3d'
+export type GraphMode = '2d' | '3d';
 
-/** Sukuria išdėstymą ir piešėją pagal režimą – vienintelė vieta, kurią reikėtų papildyti 3D. */
+/** Sukuria išdėstymą ir piešėją pagal režimą – vienintelė vieta, kur pasirenkamas variklis. */
 function createEngine(mode: GraphMode): { layout: Layout; renderer: Renderer } {
   switch (mode) {
+    case '3d':
+      return { layout: new ForceLayout3D(), renderer: new CanvasRenderer3D() };
     case '2d':
     default:
       return { layout: new ForceLayout2D(), renderer: new CanvasRenderer2D() };
   }
 }
 
-const prefs = { local: false, missing: true };
+const prefs: { local: boolean; missing: boolean; mode?: GraphMode; spin: boolean } = { local: false, missing: true, spin: true };
 
 /** Interaktyvus grafo vaizdas: tempimas, mastelis, užvedimas, paspaudimas. */
 export class GraphView {
@@ -44,15 +49,19 @@ export class GraphView {
   private info: HTMLElement;
   private adj = new Map<string, Set<string>>();
 
-  constructor(private opts: GraphViewOptions, mode: GraphMode = '2d') {
-    ({ layout: this.layout, renderer: this.renderer } = createEngine(mode));
+  private mode: GraphMode;
+  private lastInteract = 0;
+
+  constructor(private opts: GraphViewOptions) {
+    this.mode = prefs.mode ?? opts.initialMode ?? '2d';
+    ({ layout: this.layout, renderer: this.renderer } = createEngine(this.mode));
     this.stage = h('div', { class: 'graph-stage' }, this.renderer.canvas);
     const filter = h('input', { class: 'graph-filter', placeholder: 'Filtruoti mazgus…', type: 'search', spellcheck: false });
     filter.addEventListener('input', () => {
       this.state.filter = filter.value;
       this.dirty = true;
     });
-    const toggle = (label: string, key: keyof typeof prefs, title: string) => {
+    const toggle = (label: string, key: 'local' | 'missing', title: string) => {
       const b = h('button', { class: 'chip-toggle' + (prefs[key] ? ' on' : ''), title }, label);
       b.onclick = () => {
         prefs[key] = !prefs[key];
@@ -64,6 +73,18 @@ export class GraphView {
       return b;
     };
     this.info = h('span', { class: 'graph-info' });
+    const modeBtn = h('button', { class: 'chip-toggle mode-3d' + (this.mode === '3d' ? ' on' : ''), title: 'Perjungti 2D / 3D', html: icon('cube', 14) + '<span>3D</span>' });
+    modeBtn.onclick = () => {
+      this.setMode(this.mode === '3d' ? '2d' : '3d');
+      modeBtn.classList.toggle('on', this.mode === '3d');
+      spinBtn.hidden = this.mode !== '3d';
+    };
+    const spinBtn = h('button', { class: 'chip-toggle' + (prefs.spin ? ' on' : ''), title: 'Lėtas automatinis sukimasis 3D režime' }, 'Sukimasis');
+    spinBtn.hidden = this.mode !== '3d';
+    spinBtn.onclick = () => {
+      prefs.spin = !prefs.spin;
+      spinBtn.classList.toggle('on', prefs.spin);
+    };
     this.el = h(
       'div',
       { class: 'graph-view' },
@@ -80,11 +101,14 @@ export class GraphView {
         filter,
         toggle('Vietinis', 'local', 'Rodyti tik aktyvaus užrašo aplinką'),
         toggle('Neegzistuojantys', 'missing', 'Rodyti nuorodas į dar nesukurtus užrašus'),
+        modeBtn,
+        spinBtn,
         h('button', { class: 'icon-btn', title: 'Talpinti į ekraną', html: icon('zoom', 16), onclick: () => this.fit(true) }),
       ),
-      h('div', { class: 'graph-hint' }, this.info, h('span', null, 'Tempkite mazgus · ratukas – mastelis · paspaudimas – atidaryti')),
+      h('div', { class: 'graph-hint' }, this.info, h('span', { class: 'graph-help' })),
     );
     this.layout.onTick(() => (this.dirty = true));
+    this.updateHelp();
     this.ro = new ResizeObserver(() => {
       const r = this.stage.getBoundingClientRect();
       this.renderer.resize(r.width, r.height);
@@ -123,6 +147,34 @@ export class GraphView {
     return data;
   }
 
+  private updateHelp() {
+    const el = this.el.querySelector('.graph-help');
+    if (el)
+      el.textContent =
+        this.mode === '3d'
+          ? 'Tempkite foną – sukti · Shift + tempimas – stumti · ratukas – mastelis · paspaudimas – atidaryti'
+          : 'Tempkite mazgus · ratukas – mastelis · paspaudimas – atidaryti';
+  }
+
+  /** Perjungia 2D / 3D: pakeičia išdėstymą ir piešėją, duomenys ir sąveika lieka. */
+  setMode(mode: GraphMode) {
+    if (mode === this.mode) return;
+    this.mode = prefs.mode = mode;
+    this.layout.stop();
+    this.renderer.destroy();
+    ({ layout: this.layout, renderer: this.renderer } = createEngine(mode));
+    this.stage.prepend(this.renderer.canvas);
+    const r = this.stage.getBoundingClientRect();
+    this.renderer.resize(r.width, r.height);
+    this.layout.onTick(() => (this.dirty = true));
+    this.state.camera = { x: 0, y: 0, k: 1, yaw: 0.6, pitch: -0.35 };
+    this.setHover(null);
+    this.refresh();
+    this.updateHelp();
+    this.fit();
+    setTimeout(() => this.fit(true), 600);
+  }
+
   refresh() {
     const data = this.filteredData();
     this.layout.setData(data);
@@ -147,6 +199,22 @@ export class GraphView {
     const ns = this.layout.nodes;
     const r = this.stage.getBoundingClientRect();
     if (!ns.length || !r.width) return;
+    if (this.mode === '3d') {
+      const R = Math.max(40, ...ns.map((n) => Math.hypot(n.x, n.y, n.z ?? 0)));
+      const k = Math.min(1.4, Math.max(0.2, Math.min(r.width, r.height) / (2.4 * R + 80)));
+      const from = this.state.camera.k;
+      const t0 = performance.now();
+      const step = () => {
+        const t = animate ? Math.min(1, (performance.now() - t0) / 450) : 1;
+        this.state.camera.k = from + (k - from) * (1 - Math.pow(1 - t, 3));
+        this.state.camera.x = this.state.camera.x * (1 - t);
+        this.state.camera.y = this.state.camera.y * (1 - t);
+        this.dirty = true;
+        if (t < 1) requestAnimationFrame(step);
+      };
+      step();
+      return;
+    }
     let x0 = Infinity,
       y0 = Infinity,
       x1 = -Infinity,
@@ -178,6 +246,10 @@ export class GraphView {
   }
 
   private loop = () => {
+    if (this.mode === '3d' && prefs.spin && !this.drag && !this.state.hover && performance.now() - this.lastInteract > 2500) {
+      this.state.camera.yaw = (this.state.camera.yaw ?? 0) + 0.0015;
+      this.dirty = true;
+    }
     if (this.dirty || this.state.hover) {
       this.renderer.draw(this.layout, this.state);
       this.dirty = false;
@@ -213,6 +285,7 @@ export class GraphView {
     }, { passive: false });
 
     s.addEventListener('pointerdown', (e) => {
+      this.lastInteract = performance.now();
       s.setPointerCapture(e.pointerId);
       const p = this.local(e);
       this.pointers.set(e.pointerId, p);
@@ -241,16 +314,27 @@ export class GraphView {
         const [a, b] = [...this.pointers.values()];
         const dist = Math.hypot(a.x - b.x, a.y - b.y);
         const k = Math.min(6, Math.max(0.1, d.cam.k * (dist / d.pinch)));
-        this.state.camera = { ...d.cam, k };
+        this.state.camera = { ...this.state.camera, k };
         this.dirty = true;
         return;
       }
       if (Math.hypot(p.x - d.sx, p.y - d.sy) > 4) d.moved = true;
+      this.lastInteract = performance.now();
       if (d.node) {
-        const w = this.toWorld(p.x, p.y);
-        this.layout.pin(d.node, w.x, w.y);
+        if (this.renderer.unproject) {
+          const w = this.renderer.unproject(this.state, p.x, p.y, d.node);
+          this.layout.pin(d.node, w.x, w.y, w.z);
+        } else {
+          const w = this.toWorld(p.x, p.y);
+          this.layout.pin(d.node, w.x, w.y);
+        }
       } else if (d.moved) {
-        this.state.camera = { ...d.cam, x: d.cam.x - (p.x - d.sx) / d.cam.k, y: d.cam.y - (p.y - d.sy) / d.cam.k };
+        if (this.mode === '3d' && !e.shiftKey) {
+          const pitch = Math.max(-1.45, Math.min(1.45, (d.cam.pitch ?? 0) + (p.y - d.sy) * 0.006));
+          this.state.camera = { ...this.state.camera, yaw: (d.cam.yaw ?? 0) + (p.x - d.sx) * 0.006, pitch };
+        } else {
+          this.state.camera = { ...this.state.camera, x: d.cam.x - (p.x - d.sx) / d.cam.k, y: d.cam.y - (p.y - d.sy) / d.cam.k };
+        }
       }
       this.dirty = true;
     });
@@ -282,6 +366,12 @@ export class GraphView {
   }
 
   private zoomAt(sx: number, sy: number, factor: number) {
+    this.lastInteract = performance.now();
+    if (this.mode === '3d') {
+      this.state.camera.k = Math.min(6, Math.max(0.1, this.state.camera.k * factor));
+      this.dirty = true;
+      return;
+    }
     const before = this.toWorld(sx, sy);
     const c = this.state.camera;
     c.k = Math.min(6, Math.max(0.1, c.k * factor));

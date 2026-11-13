@@ -7,17 +7,28 @@
 ## Galimybės
 
 - **Vault** – atidarykite tikrą kompiuterio aplanką (File System Access API: Chrome, Edge, Opera). Jei naršyklė jo nepalaiko, užrašai saugomi naršyklės IndexedDB. Užrašai visada yra paprasti `.md` failai.
-- **Failų medis** – užrašų ir aplankų kūrimas, pervadinimas (F2), trynimas (Delete), perkėlimas tempiant (drag & drop), kontekstinis meniu.
-- **Redaktorius** (CodeMirror 6) su dviem režimais: **šaltinis** ir **gyva peržiūra** (markdown-it). Jie perjungiami mygtuku arba `Ctrl+E`.
+- **Failų medis** – užrašų, aplankų ir paveikslėlių kūrimas, pervadinimas (F2), trynimas (Delete), perkėlimas tempiant (drag & drop) arba per meniu **„Perkelti į…“**, kuris veikia ir telefone.
+- **Redaktorius** (CodeMirror 6) su trimis režimais:
+  - **Gyva** (numatytasis) – kaip Obsidian: Markdown simboliai (`#`, `**`, `` ` ``, `>`, `[[ ]]`) slepiami tiesiai redaktoriuje, išskyrus eilutę su žymekliu. Varnelės, punktai, linijos ir paveikslėliai rodomi kaip valdikliai.
+  - **Šaltinis** – matomas visas Markdown.
+  - **Skaitymas** – tik peržiūra (markdown-it).
+
+  `Ctrl+E` perjungia gyvą peržiūrą ir šaltinį, o visi trys režimai pasiekiami ir mygtukais antraštėje.
 - **[[Wiki nuorodos]]** su automatiniu pasiūlymu rašant `[[`. Palaikomos formos `[[Užrašas|tekstas]]` ir `[[Užrašas#antraštė]]`. Paspaudus nuorodą atsidaro užrašas, o jei jo nėra – jis sukuriamas. Pervadinus užrašą, nuorodos kituose užrašuose atnaujinamos.
 - **Atgalinės ir išeinančios nuorodos** dešiniajame skydelyje.
-- **Interaktyvus 2D grafas**: mazgus galima tempti, priartinti, paspaudus atidaromas užrašas, užvedus paryškinami kaimynai. Yra filtras, „vietinio grafo“ ir neegzistuojančių užrašų jungikliai.
+- **Interaktyvus 2D ir 3D grafas**: mazgus galima tempti, priartinti, paspaudus atidaromas užrašas, užvedus paryškinami kaimynai. Yra filtras, „vietinio grafo“ ir neegzistuojančių užrašų jungikliai.
+  - **3D režime** fono tempimas suka grafą, `Shift` + tempimas jį stumia, o neliečiamas grafas lėtai sukasi pats.
+  - Toliau esantys mazgai blanksta kaip rūke.
 - **Paieška**: greitas perjungiklis (`Ctrl+O`) ir pilno teksto paieška (`Ctrl+Shift+F`), kuri nekreipia dėmesio į diakritiką.
 - **Komandų paletė** (`Ctrl+P`).
 - **#žymos** su žymų debesiu ir filtravimu (Shift – kelios žymos). Galimos ir hierarchinės žymos: `#projektai/adam`.
-- **Dienos užrašas** vienu paspaudimu (`Alt+D`), pavadinimas – šiandienos data (`YYYY-MM-DD`).
+- **Dienos užrašas** vienu paspaudimu (`Alt+D`), pavadinimas – šiandienos data (`YYYY-MM-DD`). Šablone galima naudoti kintamuosius `{{data}}`, `{{diena}}` ir `{{laikas}}`.
 - **Skirtukai** ir **ekrano padalijimas** į dvi dalis (`Ctrl+\`).
-- **Varnelės** `- [ ]` pažymimos paspaudus peržiūroje, o pakeitimas įrašomas į failą.
+- **Varnelės** `- [ ]` pažymimos paspaudus gyvoje peržiūroje arba skaitymo režime, o pakeitimas įrašomas į failą.
+- **Paveikslėliai** – `![[foto.png]]` (pločiui – `![[foto.png|300]]`) ir `![aprašas](kelias/foto.png)`.
+  - Rodomi failų medyje ir atsidaro atskirame skirtuke.
+  - Įklijuoti (`Ctrl+V`) arba įtempti paveikslėliai išsaugomi aplanke „Priedai“ ir įterpiami automatiškai.
+- **Nustatymai** (`Ctrl+,`) – numatytasis režimas, šrifto dydis, išsaugojimo delsa, dienos užrašų aplankas ir šablonas, priedų aplankas, grafo režimas.
 - **Eksportas ir importas** – visas vault kaip `.zip`.
 - **Automatinis išsaugojimas** (taip pat `Ctrl+S`, perjungiant skirtukus ir uždarant langą).
 - **Pradžios ekranas** su gyvu pavyzdinių užrašų grafu. Jis rodomas, kai vault tuščias.
@@ -36,11 +47,17 @@
 
 ```json
 {
-  "defaultMode": "source",
+  "defaultMode": "live",
   "dailyFolder": "Dienos užrašai",
-  "autosaveDelay": 400
+  "dailyTemplate": "_{{diena}}_\n\n## Užduotys\n- [ ] \n",
+  "attachmentFolder": "Priedai",
+  "autosaveDelay": 400,
+  "fontSize": 15,
+  "graphMode": "2d"
 }
 ```
+
+Visus šiuos nustatymus patogiau keisti nustatymų lange (`Ctrl+,`).
 
 ## Paleidimas lokaliai
 
@@ -83,7 +100,8 @@ npm run preview
 | Komandų paletė | `Ctrl+P` |
 | Greitas perjungiklis (atidaryti / sukurti užrašą) | `Ctrl+O` |
 | Paieška visuose užrašuose | `Ctrl+Shift+F` |
-| Šaltinis / peržiūra | `Ctrl+E` |
+| Gyva peržiūra / šaltinis | `Ctrl+E` |
+| Nustatymai | `Ctrl+,` |
 | Grafo vaizdas | `Ctrl+G` |
 | Naujas užrašas | `Alt+N` |
 | Dienos užrašas | `Alt+D` |
@@ -93,11 +111,13 @@ npm run preview
 | Padalinti ekraną / uždaryti padalijimą | `Ctrl+\` |
 | Atgal / pirmyn | `Alt+←` / `Alt+→` |
 | Išsaugoti dabar | `Ctrl+S` |
-| Atidaryti nuorodą šaltinio režime | `Ctrl` + paspaudimas |
+| Atidaryti nuorodą | paspaudimas (gyvoje peržiūroje), `Ctrl` + paspaudimas (šaltinyje) |
+| Įterpti paveikslėlį | `Ctrl+V` arba įtempti failą į redaktorių |
 | Atidaryti naujame skirtuke | `Ctrl` + paspaudimas (medyje, paieškoje, peržiūroje) |
 | Pervadinti / ištrinti failų medyje | `F2` / `Delete` |
 | Ieškoti užraše | `Ctrl+F` (redaktoriuje) |
 | Grafe: palikti mazgą prisegtą | `Shift` paleidžiant tempiamą mazgą |
+| 3D grafe: sukti / stumti | tempti foną / `Shift` + tempti |
 
 macOS sistemoje vietoje `Ctrl` naudokite `Cmd`.
 
@@ -110,28 +130,27 @@ src/
   storage/               File System Access API ir IndexedDB adapteriai
   editor/                CodeMirror nustatymai, tema, wiki nuorodos, markdown-it
   workspace/             ekrano dalys (pane), skirtukai, užrašo vaizdas
-  graph/                 grafas: types (sąsajos), forceLayout2d, canvasRenderer2d, graphView
+  graph/                 grafas: types (sąsajos), forceLayout2d/3d, canvasRenderer2d/3d, graphView
   ui/                    failų medis, paieška, žymos, nuorodos, dialogai, pradžios ekranai
   styles/main.css        visa paletė :root kintamuosiuose
 ```
 
 **Paletę** pakeisite vienoje vietoje – `src/styles/main.css` faile, `:root` bloke (`--c-bg`, `--c-fg`, `--c-accent`, `--c-glow` ir jų `--rgb-*` atitikmenys). Tuos pačius kintamuosius naudoja ir grafo bei dalelių piešiniai.
 
-**3D grafas**: grafo kodas padalytas į `Layout` (pozicijų skaičiavimą) ir `Renderer` (piešimą) sąsajas (`src/graph/types.ts`). Norint pridėti 3D, užtenka sukurti `ForceLayout3D` (pvz. su `d3-force-3d`) ir `WebGLRenderer3D` (pvz. su three.js), tada papildyti `createEngine()` funkciją `src/graph/graphView.ts` faile. Sąveikos logika ir duomenų modelis lieka tie patys.
+**2D / 3D grafas**: grafo kodas padalytas į `Layout` (pozicijų skaičiavimą: `ForceLayout2D` su d3-force, `ForceLayout3D` su d3-force-3d) ir `Renderer` (piešimą: `CanvasRenderer2D`, `CanvasRenderer3D` su perspektyva) sąsajas (`src/graph/types.ts`). Režimas parenkamas `createEngine()` funkcijoje. Norint pereiti prie WebGL (pvz. three.js), užtenka naujo `Renderer` įgyvendinimo.
 
 ## Ką galima patobulinti
 
 Kur reikalavimai buvo neaiškūs, pasirinktas paprastesnis sprendimas:
 
-- **Gyva peržiūra** atvaizduojama atskirai per markdown-it (Ctrl+E perjungia). Obsidian tipo „inline“ peržiūra, kai sintaksė slepiama tiesiai redaktoriuje, būtų kitas žingsnis (CodeMirror dekoracijos).
+- **Gyva peržiūra** atidengia visą eilutę, kurioje yra žymeklis (Obsidian atidengia tik konkretų elementą). Lentelės ir kodo blokai rodomi kaip šaltinis.
 - **Išoriniai failų pakeitimai** aplanke automatiškai nestebimi. Pakeitus failus kita programa, reikia paleisti komandą „Perskaityti vault iš naujo“.
-- **Drag & drop** failų medyje naudoja HTML5 DnD, todėl jutikliniuose ekranuose failus perkelti galima tik per meniu (pervadinant). Galima pridėti „perkelti į…“ dialogą.
 - **Skirtukų** negalima perkelti iš vienos ekrano dalies į kitą, o padalijimas yra tik į dvi dalis.
 - **Nuorodų atnaujinimas** pervadinus užrašą veikia pagal pavadinimą. Pervadinus aplanką, nuorodos su pilnu keliu (`[[aplankas/užrašas]]`) neatnaujinamos.
-- **Dienos užrašų** aplankas (`Dienos užrašai`) ir šablonas keičiami tik per `settings.json`. Nėra nustatymų lango ir kalendoriaus.
-- **Paveikslėliai** ir kiti ne `.md` failai medyje nerodomi (eksportuojami / importuojami jie išsaugomi).
+- **Kiti failai** (PDF, garsas, vaizdo įrašai) medyje nerodomi, o eksportuojami ir importuojami jie išsaugomi. Ištrynus užrašą, jo paveikslėliai lieka priedų aplanke.
 - **Indeksas** laikomas atmintyje ir kuriamas iš naujo atidarius vault. Labai dideliems vault (tūkstančiams užrašų) verta krauti `index.json` talpyklą ir skaityti failus tingiai.
 - **IndexedDB vault** yra vienas vienai naršyklei. Galima pridėti kelių naršyklės vault palaikymą.
 - **Žymos** iš YAML frontmatter (`tags:`) dar neskaitomos.
-- **JS paketas** (~790 kB) neskaidomas. Grafą ir zip galima krauti tingiai (dynamic import).
-- **Grafo** mazgų pozicijos neišsaugomos tarp seansų.
+- **Pagrindinis JS paketas** (~760 kB, gzip ~270 kB) daugiausia yra CodeMirror ir markdown-it. Grafas, d3-force ir zip jau kraunami tingiai.
+- **3D grafas** piešiamas Canvas 2D su perspektyva. Labai dideliems grafams (>2000 mazgų) būtų greitesnis WebGL piešėjas.
+- **Grafo** mazgų pozicijos ir pasirinktas 2D/3D režimas tarp seansų neišsaugomi (numatytasis režimas – nustatymuose).

@@ -335,6 +335,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       onBack: () => nav.back(),
       canBack: () => nav.canBack(),
       subscribe: (cb: () => void) => this.index.on('updated', debounce(cb, 300)),
+      initialMode: this.settings.graphMode,
     };
     loadGraph().then(({ GraphView }) => {
       if (dead) return;

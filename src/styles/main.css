@@ -1451,6 +1451,14 @@ kbd {
   color: var(--c-text);
   border-color: var(--c-line-strong);
 }
+.chip-toggle.mode-3d {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.chip-toggle[hidden] {
+  display: none;
+}
 .chip-toggle.on {
   color: var(--c-accent);
   border-color: rgba(var(--rgb-accent), 0.6);

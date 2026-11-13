@@ -21,7 +21,7 @@ Kiekvienas užrašas yra paprastas \`.md\` failas. Užrašus jungia [[Wiki nuoro
 - [ ] Peržiūrėti [[Klavišų kombinacijos]]
 - [ ] Sukurti pirmą dienos užrašą (Alt+D)
 
-> Patarimas: perjunkite peržiūros režimą su **Ctrl+E** ir pažymėkite varneles – jos įrašomos į failą.
+> Patarimas: varneles galite žymėti tiesiog paspaudę – pakeitimas įrašomas į failą. **Ctrl+E** parodo Markdown šaltinį.
 
 #pradžia`,
   },
@@ -48,7 +48,7 @@ Kiekviena nuoroda sukuria **atgalinę nuorodą**: dešiniajame skydelyje matysit
 - užveskite – paryškės kaimynai
 - paspauskite – atsidarys užrašas
 
-Jungiklis **Vietinis** rodo tik aktyvaus užrašo aplinką. Žr. [[Žymos]].
+Jungiklis **Vietinis** rodo tik aktyvaus užrašo aplinką, o **3D** paverčia grafą erdviniu – tempkite foną, kad pasuktumėte. Žr. [[Žymos]].
 
 #pradžia #grafas`,
   },
@@ -71,7 +71,8 @@ Susiję: [[Grafo vaizdas]], [[Sveiki atvykę]].
 | Komandų paletė | Ctrl+P |
 | Greitas perjungiklis | Ctrl+O |
 | Paieška visuose užrašuose | Ctrl+Shift+F |
-| Šaltinis / peržiūra | Ctrl+E |
+| Gyva peržiūra / šaltinis | Ctrl+E |
+| Nustatymai | Ctrl+, |
 | Grafas | Ctrl+G |
 | Dienos užrašas | Alt+D |
 | Naujas užrašas | Alt+N |

@@ -3,7 +3,7 @@ import { nodeRadius } from './forceLayout2d';
 import type { Layout, Renderer, RenderState, SimNode } from './types';
 
 /** Švytinčių dalelių sprite – piešiamas vieną kartą ir kopijuojamas (greičiau nei shadowBlur). */
-function glowSprite(rgb: string, size = 64): HTMLCanvasElement {
+export function glowSprite(rgb: string, size = 64): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const g = c.getContext('2d')!;
