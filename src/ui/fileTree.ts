@@ -9,6 +9,8 @@ export interface FileTreeOptions {
   onExpandedChange?(expanded: string[]): void;
   onOpenSplit?(path: string): void;
   onMoveTo?(path: string): void;
+  onUpload?(dir: string): void;
+  onFilesDropped?(dir: string, files: File[]): void;
 }
 
 interface Node {
@@ -28,6 +30,7 @@ export class FileTree {
   private renaming: string | null = null;
   private rendering = false;
   private renamingExt = '';
+  private sortByDate = false;
 
   constructor(
     private vault: Vault,
@@ -40,13 +43,18 @@ export class FileTree {
       h(
         'div',
         { class: 'panel-head' },
-        h('span', { class: 'panel-title' }, 'Failai'),
         h(
           'div',
-          { class: 'panel-actions' },
+          { class: 'panel-actions tree-actions' },
           this.actionBtn('file-plus', 'Naujas užrašas', () => this.newNote('')),
           this.actionBtn('folder-plus', 'Naujas aplankas', () => this.newFolder('')),
-          this.actionBtn('chevron-down', 'Suskleisti viską', () => {
+          this.actionBtn('upload', 'Įkelti failus iš kompiuterio', () => this.opts.onUpload?.('')),
+          this.actionBtn('sort', 'Rūšiuoti: pavadinimas / naujausi', () => {
+            this.sortByDate = !this.sortByDate;
+            toast(this.sortByDate ? 'Rūšiuojama: naujausi viršuje' : 'Rūšiuojama: pagal pavadinimą');
+            this.render();
+          }),
+          this.actionBtn('chevrons-up-down', 'Suskleisti viską', () => {
             this.expanded.clear();
             this.changed();
           }),
@@ -101,7 +109,10 @@ export class FileTree {
       getFolder(dirname(f)).children.push({ path: f, name: basename(f), kind: 'file', children: [] });
     }
     const sort = (n: Node) => {
-      n.children.sort((a, b) => (a.kind !== b.kind ? (a.kind === 'folder' ? -1 : 1) : a.name.localeCompare(b.name, 'lt')));
+      const t = (x: Node) => (x.kind === 'file' ? this.vault.info(x.path).mtime : 0);
+      n.children.sort((a, b) =>
+        a.kind !== b.kind ? (a.kind === 'folder' ? -1 : 1) : this.sortByDate && a.kind === 'file' ? t(b) - t(a) : a.name.localeCompare(b.name, 'lt'),
+      );
       n.children.forEach(sort);
     };
     sort(root);
@@ -227,6 +238,10 @@ export class FileTree {
 
   private setupRootDrop() {
     this.list.addEventListener('dragover', (e) => {
+      if (!this.dragPath && e.dataTransfer?.types.includes('Files')) {
+        e.preventDefault();
+        return;
+      }
       if (!this.dragPath || !this.canDrop(this.dragPath, '')) return;
       e.preventDefault();
       this.list.querySelectorAll('.drop-target').forEach((x) => x.classList.remove('drop-target'));
@@ -239,6 +254,13 @@ export class FileTree {
       e.preventDefault();
       this.list.classList.remove('drop-target');
       if (this.dragPath) this.drop(this.dragPath, '');
+      else if (e.dataTransfer?.files.length) this.opts.onFilesDropped?.('', [...e.dataTransfer.files]);
+    });
+    this.list.addEventListener('dragenter', (e) => {
+      if (!this.dragPath && e.dataTransfer?.types.includes('Files')) {
+        e.preventDefault();
+        this.list.classList.add('drop-target');
+      }
     });
   }
 

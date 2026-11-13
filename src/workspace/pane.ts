@@ -10,6 +10,7 @@ let tabSeq = 0;
 
 export function sameLoc(a: Location, b: Location): boolean {
   if (a.kind !== b.kind) return false;
+  if (a.kind === 'files') return a.dir === (b as { dir: string }).dir;
   return locPath(a) === locPath(b);
 }
 
@@ -33,6 +34,7 @@ export class Tab {
     if (this.loc.kind === 'note') return noteName(this.loc.path);
     if (this.loc.kind === 'image') return basename(this.loc.path);
     if (this.loc.kind === 'graph') return 'Grafas';
+    if (this.loc.kind === 'files') return this.loc.dir ? basename(this.loc.dir) : 'Failų naršyklė';
     return 'Naujas skirtukas';
   }
 }
@@ -47,6 +49,7 @@ export class Pane {
   active: Tab | null = null;
   noteView: NoteView | null = null;
   private graph: ReturnType<NonNullable<WorkspaceHost['createGraphView']>> | null = null;
+  private explorer: { el: HTMLElement; destroy(): void } | null = null;
   private status: 'saving' | 'saved' | 'error' = 'saved';
 
   constructor(
@@ -94,7 +97,12 @@ export class Pane {
 
   back() {
     const t = this.active;
-    if (!t || t.idx <= 0) return;
+    if (!t) return;
+    // Grafas / naršyklė / paveikslėlis be istorijos – „atgal“ uždaro skirtuką ir grąžina į ankstesnį.
+    if (t.idx <= 0) {
+      if (t.loc.kind !== 'note' && this.tabs.length > 1) this.closeTab(t);
+      return;
+    }
     t.idx--;
     this.navigate(t, t.history[t.idx]);
   }
@@ -171,7 +179,10 @@ export class Pane {
       this.graph.destroy();
       this.graph = null;
     }
+    this.explorer?.destroy();
+    this.explorer = null;
     clear(this.body);
+    this.el.classList.toggle('no-header', t?.loc.kind === 'files');
     this.body.classList.remove('enter');
     void this.body.offsetWidth;
     this.body.classList.add('enter');
@@ -181,6 +192,18 @@ export class Pane {
     }
     if (t.loc.kind === 'image') {
       this.body.append(this.imageView(t.loc.path));
+      return;
+    }
+    if (t.loc.kind === 'files') {
+      if (!this.host.createExplorer) return;
+      this.explorer = this.host.createExplorer(t.loc.dir, {
+        navigate: (dir) => this.open({ kind: 'files', dir }),
+        back: () => this.back(),
+        forward: () => this.forward(),
+        canBack: () => t.idx > 0 || this.tabs.length > 1,
+        canForward: () => t.idx < t.history.length - 1,
+      });
+      this.body.append(this.explorer.el);
       return;
     }
     if (t.loc.kind === 'graph') {
@@ -246,7 +269,10 @@ export class Pane {
           onclick: () => this.activate(t),
           onauxclick: (e: MouseEvent) => e.button === 1 && this.closeTab(t),
         },
-        h('span', { class: 'tab-icon', html: icon(t.loc.kind === 'graph' ? 'graph' : t.loc.kind === 'note' ? 'file' : t.loc.kind === 'image' ? 'image' : 'spark', 13) }),
+        h('span', {
+          class: 'tab-icon',
+          html: icon({ graph: 'graph', note: 'file', image: 'image', files: 'folder', empty: 'spark' }[t.loc.kind], 13),
+        }),
         h('span', { class: 'tab-title' }, t.title),
         h('button', {
           class: 'tab-close',
@@ -283,7 +309,7 @@ export class Pane {
         class: 'icon-btn tab-new',
         title: 'Naujas skirtukas',
         html: icon('file-plus', 14),
-        onclick: () => this.open({ kind: 'empty' }, { newTab: true }),
+        onclick: () => this.open({ kind: 'files', dir: '' }, { newTab: true }),
       }),
     );
     this.tabbar.querySelector('.tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -295,7 +321,7 @@ export class Pane {
     const btn = (ic: string, title: string, fn: () => void, extra = '', disabled = false) =>
       h('button', { class: 'icon-btn ' + extra, title, 'aria-label': title, html: icon(ic, 16), onclick: fn, disabled });
     this.header.append(
-      btn('arrow-left', 'Atgal (Alt+←)', () => this.back(), '', !t || t.idx <= 0),
+      btn('arrow-left', 'Atgal (Alt+←)', () => this.back(), '', !t || (t.idx <= 0 && (t.loc.kind === 'note' || this.tabs.length < 2))),
       btn('arrow-right', 'Pirmyn (Alt+→)', () => this.forward(), '', !t || t.idx >= t.history.length - 1),
     );
     const crumbs = h('div', { class: 'crumbs' });
@@ -405,6 +431,7 @@ export class Pane {
   }
 
   destroy() {
+    this.explorer?.destroy();
     this.noteView?.destroy();
     this.graph?.destroy();
     this.el.remove();

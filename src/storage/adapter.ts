@@ -4,6 +4,9 @@
 export interface StorageEntry {
   path: string;
   kind: 'file' | 'folder';
+  /** Paskutinio pakeitimo laikas (ms) ir dydis baitais, jei žinomi. */
+  mtime?: number;
+  size?: number;
 }
 
 export interface StorageAdapter {

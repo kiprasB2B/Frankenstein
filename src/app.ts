@@ -22,7 +22,7 @@ import { openPicker } from './ui/picker';
 import { fuzzy, highlight } from './core/fuzzy';
 import { escapeHtml } from './ui/dom';
 import { dirname, noteName } from './core/paths';
-import { download, pickFile } from './ui/files';
+import { download, pickFile, pickFiles } from './ui/files';
 
 // Sunkesni moduliai kraunami tik prireikus.
 const loadZip = () => import('./core/zip');
@@ -32,6 +32,9 @@ import { join, isImage, extname } from './core/paths';
 import { EditorView } from '@codemirror/view';
 import { fillTemplate, openSettings } from './ui/settingsDialog';
 import { renderWelcome } from './ui/welcome';
+import { ExplorerView } from './ui/explorer';
+import { openHelp } from './ui/help';
+import { showMenu } from './ui/dialogs';
 import { SAMPLES } from './samples';
 
 export interface Command {
@@ -63,13 +66,13 @@ export class App implements WorkspaceHost, EmptyViewFactory {
   private renderer = createRenderer({ resolve: (t) => this.index?.resolve(t) });
   private ready = false;
   private lastNote: string | null = null;
+  recent: string[] = [];
 
   // Karkaso elementai
   shell!: HTMLElement;
   left!: HTMLElement;
   right!: HTMLElement;
   center!: HTMLElement;
-  topActions!: HTMLElement;
 
   constructor(private root: HTMLElement) {
     document.addEventListener('keydown', (e) => this.onKey(e), true);
@@ -149,38 +152,33 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       onOpen: (p, newTab) => this.openPath(p, newTab),
       onOpenSplit: (p) => this.openInSplit(p),
       onMoveTo: (p) => this.moveToPicker(p),
+      onUpload: (dir) => this.upload(dir),
+      onFilesDropped: (dir, files) => this.upload(dir, files),
       onExpandedChange: () => this.persist(),
     });
     this.ws = new Workspace(this);
 
-    const vaultLabel = h(
-      'button',
-      { class: 'vault-name', title: 'Keisti vault', onclick: () => this.switchVault() },
-      h('span', { class: 'vault-kind', html: icon(vault.adapter.kind === 'fs' ? 'folder' : 'vault', 14) }),
-      h('span', null, vault.name),
-    );
-    const tb = (ic: string, title: string, fn: () => void) => h('button', { class: 'icon-btn', title, 'aria-label': title, html: icon(ic, 18), onclick: fn });
-    this.topActions = h(
-      'div',
-      { class: 'topbar-actions' },
-      tb('search', 'Greitas perjungiklis (Ctrl+O)', () => this.quickSwitcher()),
-      tb('calendar', 'Dienos užrašas (Alt+D)', () => this.openDaily()),
-      tb('graph', 'Grafo vaizdas (Ctrl+G)', () => this.openGraph()),
-      tb('command', 'Komandų paletė (Ctrl+P)', () => this.commandPalette()),
-      tb('settings', 'Nustatymai (Ctrl+,)', () => this.openSettingsDialog()),
-    );
-    const topbar = h(
-      'header',
-      { class: 'topbar' },
-      h('button', { class: 'icon-btn only-mobile', title: 'Failai', html: icon('menu', 18), onclick: () => this.toggleSide('left') }),
-      h('div', { class: 'brand' }, h('span', { class: 'brand-mark', html: LOGO }), h('span', { class: 'brand-name' }, 'ADAM')),
-      vaultLabel,
-      h('div', { class: 'topbar-spacer' }),
-      this.topActions,
-      h('button', { class: 'icon-btn', title: 'Kairysis skydelis', html: icon('panel-left', 18), onclick: () => this.toggleSide('left'), 'data-desktop': '' }),
-      h('button', { class: 'icon-btn', title: 'Dešinysis skydelis', html: icon('panel-right', 18), onclick: () => this.toggleSide('right') }),
+    // ---- Kairė ikonų juosta (kaip Obsidian „ribbon“) ----
+    const rb = (ic: string, title: string, fn: () => void, cls = '') =>
+      h('button', { class: 'ribbon-btn ' + cls, title, 'aria-label': title, html: icon(ic, 18), onclick: fn });
+    const ribbon = h(
+      'nav',
+      { class: 'ribbon', 'aria-label': 'Pagrindiniai veiksmai' },
+      rb('panel-left', 'Rodyti / slėpti šoninį skydelį', () => this.toggleSide('left'), 'ribbon-toggle'),
+      h('div', { class: 'ribbon-group' },
+        rb('home', 'Failų naršyklė (Alt+E)', () => this.openExplorer()),
+        rb('graph', 'Grafo vaizdas (Ctrl+G)', () => this.openGraph()),
+        rb('search', 'Greitai atidaryti užrašą (Ctrl+O)', () => this.quickSwitcher()),
+        rb('calendar', 'Šiandienos dienos užrašas (Alt+D)', () => this.openDaily()),
+        rb('file-plus', 'Naujas užrašas (Alt+N)', () => this.newNote(this.currentDir())),
+        rb('upload', 'Įkelti failus iš kompiuterio', () => this.upload(this.currentDir())),
+        rb('command', 'Komandų paletė (Ctrl+P)', () => this.commandPalette()),
+      ),
+      h('div', { class: 'ribbon-spacer' }),
+      h('div', { class: 'ribbon-logo', html: LOGO, title: 'ADAM' }),
     );
 
+    // ---- Kairysis skydelis: perjungiklis, turinys, vault juosta ----
     this.search = new SearchPanel(vault, (p, newTab, line) => this.openPath(p, newTab, line));
     this.tags = new TagsPanel(this.index, (p, newTab) => this.openPath(p, newTab));
     this.tags.render();
@@ -194,20 +192,164 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       sw('tags', 'hash', 'Žymos'),
     );
     this.leftHost = h('div', { class: 'side-host' });
-    this.left = h('aside', { class: 'sidebar sidebar-left' }, this.leftSwitch, this.leftHost);
+    const vaultBtn = h(
+      'button',
+      { class: 'vault-switch', title: 'Vault veiksmai' },
+      h('span', { html: icon('chevrons-up-down', 14) }),
+      h('span', { class: 'vault-title' }, vault.name),
+    );
+    vaultBtn.onclick = () => {
+      const r = vaultBtn.getBoundingClientRect();
+      showMenu(r.left, r.top - 8 - 4 * 30, [
+        { label: 'Atidaryti kitą vault…', icon: 'vault', action: () => this.switchVault() },
+        { label: 'Eksportuoti .zip', icon: 'download', action: () => this.exportZip() },
+        { label: 'Importuoti .zip', icon: 'upload', action: () => this.importZip() },
+        { label: 'Perskaityti iš naujo', icon: 'refresh', action: () => this.reloadVault() },
+      ]);
+    };
+    const vaultBar = h(
+      'div',
+      { class: 'vault-bar' },
+      vaultBtn,
+      h('button', { class: 'icon-btn', title: 'Pagalba', 'aria-label': 'Pagalba', html: icon('help', 16), onclick: () => this.openHelpDialog() }),
+      h('button', { class: 'icon-btn', title: 'Nustatymai (Ctrl+,)', 'aria-label': 'Nustatymai', html: icon('settings', 16), onclick: () => this.openSettingsDialog() }),
+    );
+    this.left = h('aside', { class: 'sidebar sidebar-left' }, this.leftSwitch, this.leftHost, vaultBar);
     this.showLeftPanel('files');
+
     this.backlinks = new BacklinksPanel(
       this.index,
       (p, newTab, line) => this.openPath(p, newTab, line),
       (t) => this.openLink(t),
     );
     this.right = h('aside', { class: 'sidebar sidebar-right' }, this.backlinks.el);
-    this.center = h('main', { class: 'workspace' }, this.ws.el);
+    this.center = h(
+      'main',
+      { class: 'workspace' },
+      this.ws.el,
+      h('button', { class: 'icon-btn right-toggle', title: 'Nuorodų skydelis', 'aria-label': 'Nuorodų skydelis', html: icon('panel-right', 16), onclick: () => this.toggleSide('right') }),
+    );
     const backdrop = h('div', { class: 'backdrop', onclick: () => this.closeDrawers() });
 
-    this.shell = h('div', { class: 'shell' }, topbar, h('div', { class: 'body' }, this.left, this.center, this.right, backdrop));
+    // ---- Telefono viršutinė juosta (kompiuteryje paslėpta) ----
+    const tb = (ic: string, title: string, fn: () => void) => h('button', { class: 'icon-btn', title, 'aria-label': title, html: icon(ic, 18), onclick: fn });
+    const mobileBar = h(
+      'header',
+      { class: 'topbar' },
+      tb('menu', 'Failai', () => this.toggleSide('left')),
+      h('div', { class: 'brand' }, h('span', { class: 'brand-mark', html: LOGO }), h('span', { class: 'brand-name' }, 'ADAM')),
+      h('div', { class: 'topbar-spacer' }),
+      tb('home', 'Failų naršyklė', () => this.openExplorer()),
+      tb('search', 'Greitai atidaryti', () => this.quickSwitcher()),
+      tb('graph', 'Grafas', () => this.openGraph()),
+      tb('command', 'Komandos', () => this.commandPalette()),
+      tb('panel-right', 'Nuorodos', () => this.toggleSide('right')),
+    );
+
+    this.shell = h('div', { class: 'shell' }, mobileBar, h('div', { class: 'body' }, ribbon, this.left, this.center, this.right, backdrop));
     this.root.append(this.shell);
     this.tree.render();
+  }
+
+  /** Aplankas, kuriame dabar „esame“ (naršyklės aplankas arba aktyvaus užrašo aplankas). */
+  currentDir(): string {
+    const t = this.ws?.activePane.active;
+    if (t?.loc.kind === 'files') return t.loc.dir;
+    if (t?.loc.kind === 'note' || t?.loc.kind === 'image') return dirname(t.loc.path);
+    return '';
+  }
+
+  openExplorer(dir = '') {
+    for (const p of this.ws.panes) {
+      const t = p.tabs.find((x) => x.loc.kind === 'files');
+      if (t) {
+        this.ws.setActivePane(p);
+        p.activate(t);
+        if (t.loc.kind === 'files' && t.loc.dir !== dir) p.open({ kind: 'files', dir });
+        this.closeDrawers();
+        return;
+      }
+    }
+    this.ws.open({ kind: 'files', dir }, { newTab: true });
+    this.closeDrawers();
+  }
+
+  createExplorer(dir: string, nav: { navigate(dir: string): void; back(): void; forward(): void; canBack(): boolean; canForward(): boolean }) {
+    const ex = new ExplorerView(
+      {
+        vault: this.vault,
+        open: (p, newTab) => this.openFromExplorer(p, newTab),
+        navigate: (d) => nav.navigate(d),
+        back: () => nav.back(),
+        forward: () => nav.forward(),
+        canBack: () => nav.canBack(),
+        canForward: () => nav.canForward(),
+        recent: () => this.recent,
+        upload: (d, files) => this.upload(d, files),
+        newNote: (d) => this.newNote(d),
+        newFolder: (d) => this.vault.createFolder(d),
+        moveTo: (p) => this.moveToPicker(p),
+        renderWelcome: () => this.renderWelcomeScreen(),
+      },
+      dir,
+    );
+    return { el: ex.el, destroy: () => ex.destroy() };
+  }
+
+  /** Iš naršyklės failai atidaromi atskirame skirtuke – pati naršyklė lieka atidaryta. */
+  openFromExplorer(path: string, newTab = false) {
+    const kind = isImage(path) ? 'image' : 'note';
+    for (const p of this.ws.panes) {
+      const t = p.tabs.find((x) => (x.loc.kind === 'note' || x.loc.kind === 'image') && x.loc.path === path);
+      if (t && !newTab) {
+        this.ws.setActivePane(p);
+        p.activate(t);
+        return;
+      }
+    }
+    this.ws.open(kind === 'image' ? { kind: 'image', path } : { kind: 'note', path }, { newTab: true });
+    this.closeDrawers();
+  }
+
+  /** Įkelia failus iš kompiuterio: .md/.markdown/.txt kaip užrašus, paveikslėlius kaip priedus. */
+  async upload(dir: string, files?: File[]) {
+    files ??= await pickFiles('.md,.markdown,.txt,image/*');
+    if (!files.length) return;
+    let ok = 0;
+    const skipped: string[] = [];
+    let last = '';
+    for (const f of files) {
+      const ext = extname(f.name);
+      const base = (ext ? f.name.slice(0, -ext.length) : f.name).replace(/[\\/:*?"<>|#^[\]]/g, '-') || 'Failas';
+      try {
+        if (f.type.startsWith('image/') || isImage(f.name)) {
+          const p = this.vault.uniquePath(dir, base, ext || '.png');
+          await this.vault.writeAsset(p, new Uint8Array(await f.arrayBuffer()));
+          last = p;
+          ok++;
+        } else if (['.md', '.markdown', '.txt'].includes(ext) || f.type.startsWith('text/')) {
+          const p = this.vault.uniquePath(dir, base, '.md');
+          await this.vault.write(p, await f.text());
+          last = p;
+          ok++;
+        } else skipped.push(f.name);
+      } catch (e) {
+        toast(`Nepavyko įkelti „${f.name}“: ${(e as Error).message}`, 'error');
+      }
+    }
+    if (ok) toast(ok === 1 ? `Įkelta: ${last.split('/').pop()}` : `Įkelta failų: ${ok}`);
+    if (skipped.length) toast(`Praleista (nepalaikomas tipas): ${skipped.slice(0, 3).join(', ')}${skipped.length > 3 ? '…' : ''}`, 'error');
+    if (ok === 1 && files.length === 1) this.openPath(last);
+  }
+
+  openHelpDialog() {
+    openHelp({
+      vaultKind: this.vault.adapter.kind,
+      vaultName: this.vault.name,
+      onExplorer: () => this.openExplorer(),
+      onUpload: () => this.upload(this.currentDir()),
+      onSamples: () => this.createSamples(),
+    });
   }
 
   private restoreState(s: WorkspaceState) {
@@ -217,7 +359,10 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       this.shell.classList.toggle('left-collapsed', !!s.leftCollapsed);
       this.shell.classList.toggle('right-collapsed', !!s.rightCollapsed);
     }
+    this.recent = (s.recent ?? []).filter((p) => this.vault.has(p) || this.vault.hasAsset(p));
     this.ws.restore(s);
+    // Pirmą kartą (ar uždarius visus skirtukus) – atidarome failų naršyklę.
+    if (this.ws.panes.every((p) => !p.tabs.length)) this.ws.open({ kind: 'files', dir: '' }, { newTab: true });
     this.tree.render();
   }
 
@@ -453,6 +598,9 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       { id: 'switcher', name: 'Greitas perjungiklis: atidaryti užrašą', icon: 'search', hotkey: 'Ctrl+O', run: () => this.quickSwitcher() },
       { id: 'search', name: 'Ieškoti visuose užrašuose', icon: 'search', hotkey: 'Ctrl+Shift+F', run: () => this.openSearch() },
       { id: 'mode', name: 'Perjungti šaltinį / peržiūrą', icon: 'eye', hotkey: 'Ctrl+E', run: () => ws.activePane.toggleMode() },
+      { id: 'explorer', name: 'Failų naršyklė', icon: 'home', hotkey: 'Alt+E', run: () => this.openExplorer() },
+      { id: 'upload', name: 'Įkelti failus iš kompiuterio…', icon: 'upload', run: () => this.upload(this.currentDir()) },
+      { id: 'help', name: 'Pagalba: kaip naudotis', icon: 'help', run: () => this.openHelpDialog() },
       { id: 'graph', name: 'Atidaryti grafo vaizdą', icon: 'graph', hotkey: 'Ctrl+G', run: () => this.openGraph() },
       { id: 'tags', name: 'Rodyti žymas', icon: 'hash', run: () => this.showLeftPanel('tags', true) },
       { id: 'files', name: 'Rodyti failų medį', icon: 'folder', run: () => this.showLeftPanel('files', true) },
@@ -592,6 +740,12 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     if (!this.ready) return;
     const p = this.ws.activePath();
     if (p) this.lastNote = p;
+    const at = this.ws.activePane.active?.loc;
+    const opened = at && (at.kind === 'note' || at.kind === 'image') ? at.path : null;
+    if (opened && this.recent[0] !== opened) {
+      this.recent = [opened, ...this.recent.filter((x) => x !== opened)].slice(0, 30);
+      this.persist();
+    }
     this.tree.setActive(p);
     this.backlinks.setPath(p);
     if (p) this.ws.panes.forEach((x) => x.focusGraph(p));
@@ -606,19 +760,23 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       rightCollapsed: this.shell.classList.contains('right-collapsed'),
       expanded: [...this.tree.expanded],
       leftPanel: this.leftPanel,
+      recent: this.recent,
     };
     this.vault.writeJSON('workspace.json', state);
   }, 600);
 
+  renderWelcomeScreen(): HTMLElement {
+    return renderWelcome({
+      createSamples: (open) => this.createSamples(open),
+      newNote: () => this.newNote(),
+      importZip: () => this.importZip(),
+      openDaily: () => this.openDaily(),
+      upload: () => this.upload(''),
+    });
+  }
+
   renderEmpty(): HTMLElement {
-    if (this.vault.isEmpty()) {
-      return renderWelcome({
-        createSamples: (open) => this.createSamples(open),
-        newNote: () => this.newNote(),
-        importZip: () => this.importZip(),
-        openDaily: () => this.openDaily(),
-      });
-    }
+    if (this.vault.isEmpty()) return this.renderWelcomeScreen();
     return h(
       'div',
       { class: 'empty-state' },
@@ -631,6 +789,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
           'div',
           { class: 'empty-actions' },
           h('button', { class: 'btn primary', onclick: () => this.newNote(), html: icon('file-plus', 14) + 'Naujas užrašas' }),
+          h('button', { class: 'btn', onclick: () => this.openExplorer(), html: icon('home', 14) + 'Failų naršyklė' }),
           h('button', { class: 'btn', onclick: () => this.quickSwitcher(), html: icon('search', 14) + 'Atidaryti užrašą' }),
           h('button', { class: 'btn', onclick: () => this.openGraph(), html: icon('graph', 14) + 'Grafas' }),
         ),
@@ -651,6 +810,12 @@ export class App implements WorkspaceHost, EmptyViewFactory {
   // ---------- Veiksmai ----------
 
   openPath(path: string, newTab = false, line?: number) {
+    // Jei aktyvi failų naršyklė – jos neperrašome, failas atsidaro šalia.
+    if (!newTab && this.ws.activePane.active?.loc.kind === 'files') {
+      this.openFromExplorer(path);
+      if (line !== undefined) requestAnimationFrame(() => this.ws.activeNoteView()?.revealLine(line));
+      return;
+    }
     if (isImage(path)) {
       this.ws.open({ kind: 'image', path }, { newTab });
       this.closeDrawers();
@@ -710,6 +875,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     if (e.altKey && !mod && e.key === 'ArrowRight') return run(() => this.ws.activePane.forward());
     if (mod && e.shiftKey && k === 'f') return run(() => this.openSearch());
     if (mod && !e.shiftKey && k === 'o') return run(() => this.quickSwitcher());
+    if (e.altKey && !mod && e.code === 'KeyE') return run(() => this.openExplorer());
     if (e.altKey && !mod && e.code === 'KeyD') return run(() => this.openDaily());
     if (e.altKey && !mod && e.code === 'KeyT') return run(() => this.ws.open({ kind: 'empty' }, { newTab: true }));
     if (mod && e.code === 'Backslash') return run(() => this.toggleSplit());

@@ -6,7 +6,12 @@ import type { NoteView } from './noteView';
 export type Mode = 'source' | 'live' | 'preview';
 
 /** Vieta skirtuke: užrašas arba specialus vaizdas (grafas). */
-export type Location = { kind: 'note'; path: string } | { kind: 'image'; path: string } | { kind: 'graph' } | { kind: 'empty' };
+export type Location =
+  | { kind: 'note'; path: string }
+  | { kind: 'image'; path: string }
+  | { kind: 'files'; dir: string }
+  | { kind: 'graph' }
+  | { kind: 'empty' };
 
 export function locPath(l: Location): string | null {
   return l.kind === 'note' || l.kind === 'image' ? l.path : null;
@@ -29,6 +34,7 @@ export interface WorkspaceState {
   rightCollapsed?: boolean;
   leftPanel?: string;
   expanded?: string[];
+  recent?: string[];
 }
 
 export interface Settings {
@@ -70,6 +76,11 @@ export interface WorkspaceHost {
   onActiveChange(): void;
   /** Kviečiama, kai reikia išsaugoti darbo vietos būseną. */
   persist(): void;
+  /** Failų naršyklės vaizdas (skirtukas „files“). */
+  createExplorer?(
+    dir: string,
+    nav: { navigate(dir: string): void; back(): void; forward(): void; canBack(): boolean; canForward(): boolean },
+  ): { el: HTMLElement; destroy(): void };
   /** Paveikslėlio peržiūros skirtukui. */
   assetUrl?(path: string): Promise<string | null>;
   createGraphView?(nav: { back(): void; canBack(): boolean }): { el: HTMLElement; destroy(): void; refresh?(): void; focus?(path: string | null): void };

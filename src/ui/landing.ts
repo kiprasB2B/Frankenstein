@@ -48,6 +48,13 @@ export function renderLanding(opts: LandingOptions): { el: HTMLElement; destroy(
         card('vault', 'Naršyklės vault', 'Užrašai saugomi šios naršyklės IndexedDB saugykloje', opts.onBrowserVault, !fs),
         opts.onImportZip ? card('upload', 'Importuoti .zip', 'Atkurti vault iš anksčiau eksportuoto archyvo', opts.onImportZip) : null,
       ),
+      h(
+        'p',
+        { class: 'landing-note' },
+        fs
+          ? '„Atidaryti aplanką“ – pasirinkite bet kurį kompiuterio aplanką (pvz. Dokumentai/Užrašai): visi užrašai bus paprasti .md failai jame. Nežinote, ką rinktis? „Naršyklės vault“ – greičiausia pradžia; failus vėliau įkelsite mygtuku „Įkelti failus“.'
+          : null,
+      ),
       fs
         ? null
         : h('p', { class: 'landing-note' }, 'Jūsų naršyklė nepalaiko tiesioginės prieigos prie aplankų (File System Access API), todėl naudojama naršyklės saugykla. Duomenis galite bet kada eksportuoti kaip .zip.'),

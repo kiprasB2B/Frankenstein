@@ -6,6 +6,19 @@
 
 ## Galimybės
 
+- **Sąsaja kaip Obsidian**:
+  - kairėje – vertikali ikonų juosta (failų naršyklė, grafas, paieška, dienos užrašas, naujas užrašas, įkėlimas, komandos);
+  - šalia – failų medis su veiksmų eilute;
+  - apačioje – vault juosta su pagalba (?) ir nustatymais (⚙);
+  - viršuje – skirtukai.
+- **Failų naršyklė** (`Alt+E`, namų ikona) – veikia kaip Windows „File Explorer“:
+  - atgal / pirmyn / į viršų, adreso eilutė ir paieška;
+  - „Naujas“, „Įkelti failus“, pervadinti, perkelti, ištrinti;
+  - rūšiavimas ir rodinys (sąrašas arba didelės piktogramos);
+  - „Neseniai atidaryti“ kortelės ir būsenos juosta.
+  - Failus iš kompiuterio galima tiesiog įtempti į naršyklę.
+- **Įkelti failus** – .md, .txt ir paveikslėlius galima įkelti mygtuku arba įtempti į naršyklę, failų medį ar redaktorių.
+- **Pagalbos langas** (? apačioje kairėje) – kaip pradėti ir kur yra failai.
 - **Vault** – atidarykite tikrą kompiuterio aplanką (File System Access API: Chrome, Edge, Opera). Jei naršyklė jo nepalaiko, užrašai saugomi naršyklės IndexedDB. Užrašai visada yra paprasti `.md` failai.
 - **Failų medis** – užrašų, aplankų ir paveikslėlių kūrimas, pervadinimas (F2), trynimas (Delete), perkėlimas tempiant (drag & drop) arba per meniu **„Perkelti į…“**, kuris veikia ir telefone.
 - **Redaktorius** (CodeMirror 6) su trimis režimais:
@@ -103,6 +116,7 @@ npm run preview
 | Gyva peržiūra / šaltinis | `Ctrl+E` |
 | Nustatymai | `Ctrl+,` |
 | Grafo vaizdas | `Ctrl+G` |
+| Failų naršyklė | `Alt+E` |
 | Naujas užrašas | `Alt+N` |
 | Dienos užrašas | `Alt+D` |
 | Naujas skirtukas | `Alt+T` |
@@ -114,7 +128,8 @@ npm run preview
 | Atidaryti nuorodą | paspaudimas (gyvoje peržiūroje), `Ctrl` + paspaudimas (šaltinyje) |
 | Įterpti paveikslėlį | `Ctrl+V` arba įtempti failą į redaktorių |
 | Atidaryti naujame skirtuke | `Ctrl` + paspaudimas (medyje, paieškoje, peržiūroje) |
-| Pervadinti / ištrinti failų medyje | `F2` / `Delete` |
+| Pervadinti / ištrinti (medyje ir naršyklėje) | `F2` / `Delete` |
+| Naršyklėje: į viršų / atidaryti | `Backspace` / `Enter` arba dvigubas paspaudimas |
 | Ieškoti užraše | `Ctrl+F` (redaktoriuje) |
 | Grafe: palikti mazgą prisegtą | `Shift` paleidžiant tempiamą mazgą |
 | 3D grafe: sukti / stumti | tempti foną / `Shift` + tempti |
@@ -131,7 +146,7 @@ src/
   editor/                CodeMirror nustatymai, tema, wiki nuorodos, markdown-it
   workspace/             ekrano dalys (pane), skirtukai, užrašo vaizdas
   graph/                 grafas: types (sąsajos), forceLayout2d/3d, canvasRenderer2d/3d, graphView
-  ui/                    failų medis, paieška, žymos, nuorodos, dialogai, pradžios ekranai
+  ui/                    failų naršyklė, failų medis, paieška, žymos, nuorodos, dialogai, pagalba
   styles/main.css        visa paletė :root kintamuosiuose
 ```
 

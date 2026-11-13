@@ -10,6 +10,7 @@ export interface WelcomeActions {
   newNote(): void;
   importZip(): void;
   openDaily(): void;
+  upload?(): void;
 }
 
 function sampleGraph(): GraphData {
@@ -62,6 +63,7 @@ export function renderWelcome(actions: WelcomeActions): HTMLElement {
         { class: 'welcome-actions' },
         h('button', { class: 'btn primary', html: icon('spark', 14) + 'Sukurti pavyzdinius užrašus', onclick: () => actions.createSamples() }),
         h('button', { class: 'btn', html: icon('file-plus', 14) + 'Naujas užrašas', onclick: () => actions.newNote() }),
+        actions.upload ? h('button', { class: 'btn', html: icon('upload', 14) + 'Įkelti failus', onclick: () => actions.upload!() }) : null,
         h('button', { class: 'btn', html: icon('calendar', 14) + 'Dienos užrašas', onclick: () => actions.openDaily() }),
         h('button', { class: 'btn ghost', html: icon('upload', 14) + 'Importuoti .zip', onclick: () => actions.importZip() }),
       ),

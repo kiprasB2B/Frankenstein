@@ -20,6 +20,8 @@ export class Vault extends Emitter<{ change: VaultEvent; reload: void }> {
   /** Paveikslėliai ir kiti priedai (turinys neskaitomas iš anksto). */
   private assetSet = new Set<string>();
   private urlCache = new Map<string, string>();
+  /** Failų metaduomenys naršyklei: pakeitimo laikas ir dydis. */
+  private meta = new Map<string, { mtime: number; size: number }>();
 
   constructor(readonly adapter: StorageAdapter) {
     super();
@@ -33,11 +35,13 @@ export class Vault extends Emitter<{ change: VaultEvent; reload: void }> {
     this.files.clear();
     this.folderSet.clear();
     this.assetSet.clear();
+    this.meta.clear();
     this.urlCache.forEach((u) => URL.revokeObjectURL(u));
     this.urlCache.clear();
     const entries = await this.adapter.list();
     await Promise.all(
       entries.map(async (e) => {
+        if (e.kind === 'file') this.meta.set(e.path, { mtime: e.mtime ?? Date.now(), size: e.size ?? 0 });
         if (e.kind === 'folder') this.folderSet.add(e.path);
         else if (isMarkdown(e.path)) this.files.set(e.path, await this.adapter.read(e.path));
         else if (isImage(e.path)) this.assetSet.add(e.path);
@@ -58,6 +62,10 @@ export class Vault extends Emitter<{ change: VaultEvent; reload: void }> {
     return this.files.has(path);
   }
 
+  info(path: string): { mtime: number; size: number } {
+    return this.meta.get(path) ?? { mtime: 0, size: this.files.has(path) ? new Blob([this.files.get(path)!]).size : 0 };
+  }
+
   assets(): string[] {
     return [...this.assetSet].sort((a, b) => a.localeCompare(b, 'lt'));
   }
@@ -70,6 +78,7 @@ export class Vault extends Emitter<{ change: VaultEvent; reload: void }> {
   async writeAsset(path: string, data: Uint8Array): Promise<void> {
     await this.adapter.write(path, data);
     this.urlCache.delete(path);
+    this.meta.set(path, { mtime: Date.now(), size: data.length });
     const existed = this.assetSet.has(path);
     this.assetSet.add(path);
     this.ensureParents(path);
@@ -135,6 +144,7 @@ export class Vault extends Emitter<{ change: VaultEvent; reload: void }> {
     const existed = this.files.has(path);
     if (existed && this.files.get(path) === content) return;
     this.files.set(path, content);
+    this.meta.set(path, { mtime: Date.now(), size: new Blob([content]).size });
     this.ensureParents(path);
     this.emit('change', existed ? { type: 'modify', path, source } : { type: 'create', path, kind: 'file' });
     await this.adapter.write(path, content);
@@ -166,6 +176,7 @@ export class Vault extends Emitter<{ change: VaultEvent; reload: void }> {
     const isFolder = this.folderSet.has(path);
     await this.adapter.remove(path);
     for (const a of [...this.assetSet]) if (isInside(a, path)) this.assetSet.delete(a);
+    for (const m of [...this.meta.keys()]) if (isInside(m, path)) this.meta.delete(m);
     if (isFolder) {
       for (const f of [...this.files.keys()]) if (isInside(f, path)) this.files.delete(f);
       for (const f of [...this.folderSet]) if (isInside(f, path)) this.folderSet.delete(f);
@@ -196,6 +207,11 @@ export class Vault extends Emitter<{ change: VaultEvent; reload: void }> {
     if (this.files.has(to) || this.folderSet.has(to) || this.assetSet.has(to)) throw new Error(`„${basename(to)}“ jau egzistuoja.`);
     await this.adapter.rename(from, to);
     const moved = new Map<string, string>();
+    for (const [m, v] of [...this.meta])
+      if (isInside(m, from)) {
+        this.meta.delete(m);
+        this.meta.set(to + m.slice(from.length), v);
+      }
     for (const a of [...this.assetSet])
       if (isInside(a, from)) {
         this.assetSet.delete(a);

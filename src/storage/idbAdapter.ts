@@ -16,7 +16,14 @@ export class IdbAdapter implements StorageAdapter {
 
   async list(): Promise<StorageEntry[]> {
     const rows = await idbGetAll<Row>(STORE_FILES);
-    return rows.filter((r) => !isHidden(r.path)).map((r) => ({ path: r.path, kind: r.kind }));
+    return rows
+      .filter((r) => !isHidden(r.path))
+      .map((r) => ({
+        path: r.path,
+        kind: r.kind,
+        mtime: r.mtime,
+        size: typeof r.content === 'string' ? new TextEncoder().encode(r.content).length : r.content?.length,
+      }));
   }
 
   private async row(path: string): Promise<Row | undefined> {

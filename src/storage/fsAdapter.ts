@@ -68,7 +68,14 @@ export class FsAdapter implements StorageAdapter {
         if (h.kind === 'directory') {
           out.push({ path: p, kind: 'folder' });
           await walk(h as DirHandle, p);
-        } else out.push({ path: p, kind: 'file' });
+        } else {
+          try {
+            const f = await (h as FileSystemFileHandle).getFile();
+            out.push({ path: p, kind: 'file', mtime: f.lastModified, size: f.size });
+          } catch {
+            out.push({ path: p, kind: 'file' });
+          }
+        }
       }
     };
     await walk(this.root, '');
