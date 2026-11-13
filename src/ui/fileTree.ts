@@ -7,6 +7,7 @@ import { confirmDialog, showMenu, toast } from './dialogs';
 export interface FileTreeOptions {
   onOpen(path: string, newTab: boolean): void;
   onExpandedChange?(expanded: string[]): void;
+  onOpenSplit?(path: string): void;
 }
 
 interface Node {
@@ -253,7 +254,11 @@ export class FileTree {
     const dir = n.kind === 'folder' ? n.path : dirname(n.path);
     showMenu(x, y, [
       ...(n.kind === 'file'
-        ? [{ label: 'Atidaryti naujame skirtuke', icon: 'file', action: () => this.opts.onOpen(n.path, true) }, 'sep' as const]
+        ? [
+            { label: 'Atidaryti naujame skirtuke', icon: 'file', action: () => this.opts.onOpen(n.path, true) },
+            { label: 'Atidaryti padalintame ekrane', icon: 'split', action: () => this.opts.onOpenSplit?.(n.path) },
+            'sep' as const,
+          ]
         : []),
       { label: 'Naujas užrašas', icon: 'file-plus', action: () => this.newNote(dir) },
       { label: 'Naujas aplankas', icon: 'folder-plus', action: () => this.newFolder(dir) },

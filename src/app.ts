@@ -23,6 +23,9 @@ import { fuzzy, highlight } from './core/fuzzy';
 import { escapeHtml } from './ui/dom';
 import { dirname, noteName } from './core/paths';
 import { GraphView } from './graph/graphView';
+import { download, exportVault, importEntries, pickFile, readZip } from './core/zip';
+import { confirmDialog } from './ui/dialogs';
+import { join } from './core/paths';
 
 export interface Command {
   id: string;
@@ -94,6 +97,12 @@ export class App implements WorkspaceHost, EmptyViewFactory {
         else toast('Leidimas nesuteiktas.', 'error');
       },
       onBrowserVault: () => this.openAdapter(new IdbAdapter()),
+      onImportZip: async () => {
+        const file = await pickFile('.zip,application/zip');
+        if (!file) return;
+        await this.openAdapter(new IdbAdapter());
+        if (this.vault) await this.importZip(file);
+      },
     });
     this.root.append(this.landing.el);
   }
@@ -129,6 +138,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     clear(this.root);
     this.tree = new FileTree(vault, {
       onOpen: (p, newTab) => this.openPath(p, newTab),
+      onOpenSplit: (p) => this.openInSplit(p),
       onExpandedChange: () => this.persist(),
     });
     this.ws = new Workspace(this);
@@ -144,6 +154,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       'div',
       { class: 'topbar-actions' },
       tb('search', 'Greitas perjungiklis (Ctrl+O)', () => this.quickSwitcher()),
+      tb('calendar', 'Dienos užrašas (Alt+D)', () => this.openDaily()),
       tb('graph', 'Grafo vaizdas (Ctrl+G)', () => this.openGraph()),
       tb('command', 'Komandų paletė (Ctrl+P)', () => this.commandPalette()),
     );
@@ -365,7 +376,84 @@ export class App implements WorkspaceHost, EmptyViewFactory {
 
   /** Vėlesnių etapų komandos. */
   protected extraCommands(): Command[] {
-    return [];
+    return [
+      { id: 'daily', name: 'Atidaryti šiandienos dienos užrašą', icon: 'calendar', hotkey: 'Alt+D', run: () => this.openDaily() },
+      { id: 'split', name: 'Padalinti ekraną / uždaryti padalijimą', icon: 'split', hotkey: 'Ctrl+\\', run: () => this.toggleSplit() },
+      { id: 'tab.new', name: 'Naujas skirtukas', icon: 'file-plus', hotkey: 'Alt+T', run: () => this.ws.open({ kind: 'empty' }, { newTab: true }) },
+      { id: 'tab.next', name: 'Kitas skirtukas', icon: 'arrow-right', hotkey: 'Ctrl+Tab', run: () => this.cycleTab(1) },
+      { id: 'tab.prev', name: 'Ankstesnis skirtukas', icon: 'arrow-left', hotkey: 'Ctrl+Shift+Tab', run: () => this.cycleTab(-1) },
+      { id: 'export', name: 'Eksportuoti vault kaip .zip', icon: 'download', run: () => this.exportZip() },
+      { id: 'import', name: 'Importuoti .zip į vault', icon: 'upload', run: () => this.importZip() },
+    ];
+  }
+
+  // ---------- 6 etapas: dienos užrašas, padalijimas, eksportas ----------
+
+  static todayName(d = new Date()): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  async openDaily() {
+    const name = App.todayName();
+    const path = join(this.settings.dailyFolder, name + '.md');
+    if (!this.vault.has(path)) {
+      const weekday = new Date().toLocaleDateString('lt-LT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      await this.vault.write(path, `_${weekday}_\n\n## Užduotys\n- [ ] \n\n## Užrašai\n\n#dienoraštis\n`);
+      toast('Sukurtas šiandienos užrašas');
+    }
+    this.openPath(path);
+  }
+
+  toggleSplit() {
+    if (this.ws.panes.length > 1) this.ws.closePane(this.ws.activePane);
+    else this.ws.split();
+  }
+
+  openInSplit(path: string) {
+    if (this.ws.panes.length < 2) this.ws.split();
+    const other = this.ws.panes.find((p) => p !== this.ws.activePane) ?? this.ws.panes[1];
+    this.ws.setActivePane(other);
+    other.open({ kind: 'note', path });
+  }
+
+  cycleTab(dir: number) {
+    const p = this.ws.activePane;
+    if (!p.tabs.length) return;
+    const i = p.active ? p.tabs.indexOf(p.active) : 0;
+    p.activate(p.tabs[(i + dir + p.tabs.length) % p.tabs.length]);
+  }
+
+  async exportZip() {
+    this.ws.flush();
+    try {
+      const blob = await exportVault(this.vault);
+      download(blob, `${this.vault.name.replace(/[^\p{L}\p{N}_-]+/gu, '-')}-${App.todayName()}.zip`);
+      toast('Vault eksportuotas');
+    } catch (e) {
+      toast('Eksportas nepavyko: ' + (e as Error).message, 'error');
+    }
+  }
+
+  async importZip(file?: File | null) {
+    file ??= await pickFile('.zip,application/zip');
+    if (!file) return;
+    try {
+      const entries = readZip(await file.arrayBuffer());
+      if (!entries.length) return toast('Archyve nerasta failų.', 'error');
+      const clashes = entries.filter((e) => this.vault.has(e.path)).length;
+      if (
+        clashes &&
+        !(await confirmDialog('Importuoti archyvą?', `${entries.length} failai bus įrašyti į „${this.vault.name}“. ${clashes} esami užrašai tokiais pačiais pavadinimais bus perrašyti.`, 'Importuoti'))
+      )
+        return;
+      this.ws.flush();
+      const n = await importEntries(this.vault, entries);
+      this.ws.panes.forEach((p) => p.renderBody());
+      toast(`Importuota failų: ${n}`);
+    } catch (e) {
+      toast('Importas nepavyko: ' + (e as Error).message, 'error');
+    }
   }
 
   renameActive() {
@@ -477,6 +565,10 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     if (e.altKey && !mod && e.key === 'ArrowRight') return run(() => this.ws.activePane.forward());
     if (mod && e.shiftKey && k === 'f') return run(() => this.openSearch());
     if (mod && !e.shiftKey && k === 'o') return run(() => this.quickSwitcher());
+    if (e.altKey && !mod && e.code === 'KeyD') return run(() => this.openDaily());
+    if (e.altKey && !mod && e.code === 'KeyT') return run(() => this.ws.open({ kind: 'empty' }, { newTab: true }));
+    if (mod && e.code === 'Backslash') return run(() => this.toggleSplit());
+    if (e.ctrlKey && e.key === 'Tab') return run(() => this.cycleTab(e.shiftKey ? -1 : 1));
     if (mod && !e.shiftKey && k === 'g') return run(() => this.openGraph());
     if (mod && !e.shiftKey && k === 'p') return run(() => this.commandPalette());
     if (e.altKey && !mod && e.code === 'KeyN') return run(() => this.newNote());
