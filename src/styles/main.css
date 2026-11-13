@@ -862,7 +862,7 @@ input {
 
 /* ---- Markdown peržiūra ---- */
 .markdown {
-  font-size: 15px;
+  font-size: var(--editor-font-size, 15px);
   line-height: 1.75;
   color: var(--c-text);
   overflow-wrap: anywhere;
@@ -1806,6 +1806,98 @@ kbd {
 .toast.show {
   opacity: 1;
   transform: none;
+}
+
+/* ---- Nustatymai ---- */
+.settings-overlay {
+  padding-top: 6vh;
+}
+.dialog.settings {
+  width: min(560px, 100% - 24px);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s-3) var(--s-3) var(--s-3) var(--s-5);
+  border-bottom: 1px solid var(--c-line);
+}
+.settings-head .dialog-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: 0;
+  color: var(--c-text);
+}
+.settings-head .dialog-title .icon {
+  color: var(--c-accent);
+}
+.settings-body {
+  overflow: auto;
+  padding: var(--s-2) var(--s-5) var(--s-4);
+}
+.dialog.settings .dialog-actions {
+  margin: 0;
+  padding: var(--s-3) var(--s-5);
+  border-top: 1px solid var(--c-line);
+}
+.set-section {
+  margin: var(--s-4) 0 var(--s-2);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-accent);
+}
+.set-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: var(--s-3);
+}
+.set-label {
+  font-size: var(--fs-sm);
+  color: var(--c-text);
+}
+.set-hint {
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+}
+select.input {
+  appearance: none;
+  cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--c-text-dim) 50%), linear-gradient(135deg, var(--c-text-dim) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 15px, calc(100% - 11px) 15px;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+select.input option {
+  background: var(--c-raised);
+}
+.set-textarea {
+  height: auto;
+  padding: var(--s-2) var(--s-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  resize: vertical;
+}
+.set-range-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+.set-range {
+  flex: 1;
+  accent-color: var(--c-accent);
+}
+.set-range-value {
+  min-width: 44px;
+  font-size: var(--fs-sm);
+  color: var(--c-accent);
+  text-align: right;
 }
 
 /* ==========================================================================

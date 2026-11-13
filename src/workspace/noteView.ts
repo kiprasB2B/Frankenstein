@@ -6,7 +6,6 @@ import { toggleTaskAt } from '../editor/markdown';
 import { h } from '../ui/dom';
 import { toast } from '../ui/dialogs';
 import { dirname, noteName } from '../core/paths';
-import { debounce } from '../core/events';
 import type { Mode, WorkspaceHost } from './types';
 import type { Tab } from './pane';
 
@@ -18,7 +17,7 @@ export class NoteView {
   private editorHost: HTMLElement;
   readonly previewEl: HTMLElement;
   tab: Tab | null = null;
-  private saveTimer: ReturnType<typeof debounce>;
+  private saveTimer: (() => void) & { cancel(): void };
   private dirty = false;
   private live = new Compartment();
   onStatus: (s: 'saving' | 'saved' | 'error') => void = () => {};
@@ -29,7 +28,14 @@ export class NoteView {
     this.previewEl = h('article', { class: 'note-preview markdown' });
     this.el = h('div', { class: 'note-view' }, h('div', { class: 'note-title-wrap' }, this.titleInput), this.editorHost, this.previewEl);
     this.view = new EditorView({ parent: this.editorHost });
-    this.saveTimer = debounce(() => this.save(), host.settings.autosaveDelay);
+    // Delsa skaitoma kiekvieną kartą – nustatymų pakeitimas galioja iškart.
+    let timer: number | undefined;
+    const run = () => {
+      clearTimeout(timer);
+      timer = window.setTimeout(() => this.save(), Math.max(100, host.settings.autosaveDelay));
+    };
+    run.cancel = () => clearTimeout(timer);
+    this.saveTimer = run;
 
     this.titleInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {

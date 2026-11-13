@@ -37,6 +37,12 @@ export interface Settings {
   autosaveDelay: number;
   /** Aplankas įklijuotiems / įtemptiems paveikslėliams. */
   attachmentFolder: string;
+  /** Dienos užrašo šablonas: {{data}}, {{diena}}, {{laikas}}. */
+  dailyTemplate: string;
+  /** Redaktoriaus ir peržiūros šrifto dydis (px). */
+  fontSize: number;
+  /** Grafo režimas pagal nutylėjimą. */
+  graphMode: '2d' | '3d';
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -44,6 +50,9 @@ export const DEFAULT_SETTINGS: Settings = {
   dailyFolder: 'Dienos užrašai',
   autosaveDelay: 400,
   attachmentFolder: 'Priedai',
+  dailyTemplate: '_{{diena}}_\n\n## Užduotys\n- [ ] \n\n## Užrašai\n\n#dienoraštis\n',
+  fontSize: 15,
+  graphMode: '2d',
 };
 
 /** Ką darbo vietos komponentai gauna iš programos. */

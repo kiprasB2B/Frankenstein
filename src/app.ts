@@ -30,6 +30,7 @@ const loadGraph = () => import('./graph/graphView');
 import { confirmDialog } from './ui/dialogs';
 import { join, isImage, extname } from './core/paths';
 import { EditorView } from '@codemirror/view';
+import { fillTemplate, openSettings } from './ui/settingsDialog';
 import { renderWelcome } from './ui/welcome';
 import { SAMPLES } from './samples';
 
@@ -127,6 +128,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     this.landing = null;
     this.vault = vault;
     this.settings = await vault.readJSON<Settings>('settings.json', { ...DEFAULT_SETTINGS });
+    this.applySettings();
     await this.onVaultLoaded();
     this.buildShell();
     const state = await vault.readJSON<WorkspaceState>('workspace.json', { panes: [], activePane: 0 });
@@ -165,6 +167,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       tb('calendar', 'Dienos užrašas (Alt+D)', () => this.openDaily()),
       tb('graph', 'Grafo vaizdas (Ctrl+G)', () => this.openGraph()),
       tb('command', 'Komandų paletė (Ctrl+P)', () => this.commandPalette()),
+      tb('settings', 'Nustatymai (Ctrl+,)', () => this.openSettingsDialog()),
     );
     const topbar = h(
       'header',
@@ -465,9 +468,23 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     ];
   }
 
+  private applySettings() {
+    document.documentElement.style.setProperty('--editor-font-size', (this.settings.fontSize || 15) + 'px');
+  }
+
+  async openSettingsDialog() {
+    const next = await openSettings(this.settings, this.vault.folders());
+    if (!next) return;
+    this.settings = Object.assign(this.settings, next); // tas pats objektas – jį naudoja atidaryti redaktoriai
+    this.applySettings();
+    await this.vault.writeJSON('settings.json', this.settings);
+    toast('Nustatymai išsaugoti');
+  }
+
   /** Vėlesnių etapų komandos. */
   protected extraCommands(): Command[] {
     return [
+      { id: 'settings', name: 'Nustatymai', icon: 'settings', hotkey: 'Ctrl+,', run: () => this.openSettingsDialog() },
       { id: 'daily', name: 'Atidaryti šiandienos dienos užrašą', icon: 'calendar', hotkey: 'Alt+D', run: () => this.openDaily() },
       { id: 'split', name: 'Padalinti ekraną / uždaryti padalijimą', icon: 'split', hotkey: 'Ctrl+\\', run: () => this.toggleSplit() },
       { id: 'tab.new', name: 'Naujas skirtukas', icon: 'file-plus', hotkey: 'Alt+T', run: () => this.ws.open({ kind: 'empty' }, { newTab: true }) },
@@ -489,8 +506,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     const name = App.todayName();
     const path = join(this.settings.dailyFolder, name + '.md');
     if (!this.vault.has(path)) {
-      const weekday = new Date().toLocaleDateString('lt-LT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      await this.vault.write(path, `_${weekday}_\n\n## Užduotys\n- [ ] \n\n## Užrašai\n\n#dienoraštis\n`);
+      await this.vault.write(path, fillTemplate(this.settings.dailyTemplate ?? DEFAULT_SETTINGS.dailyTemplate));
       toast('Sukurtas šiandienos užrašas');
     }
     this.openPath(path);
@@ -697,6 +713,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     if (e.altKey && !mod && e.code === 'KeyT') return run(() => this.ws.open({ kind: 'empty' }, { newTab: true }));
     if (mod && e.code === 'Backslash') return run(() => this.toggleSplit());
     if (e.ctrlKey && e.key === 'Tab') return run(() => this.cycleTab(e.shiftKey ? -1 : 1));
+    if (mod && e.key === ',') return run(() => this.openSettingsDialog());
     if (mod && !e.shiftKey && k === 'g') return run(() => this.openGraph());
     if (mod && !e.shiftKey && k === 'p') return run(() => this.commandPalette());
     if (e.altKey && !mod && e.code === 'KeyN') return run(() => this.newNote());

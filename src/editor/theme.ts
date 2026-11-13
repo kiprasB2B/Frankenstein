@@ -9,7 +9,7 @@ export const labTheme = EditorView.theme(
       height: '100%',
       color: 'var(--c-text)',
       backgroundColor: 'transparent',
-      fontSize: '15px',
+      fontSize: 'var(--editor-font-size, 15px)',
     },
     '.cm-scroller': {
       fontFamily: 'var(--font-ui)',
