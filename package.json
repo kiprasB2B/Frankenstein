@@ -1,0 +1,33 @@
+{
+  "name": "frankenstein",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Frankenstein – užrašų programa naršyklėje",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/d3-force": "^3.0.10",
+    "@types/markdown-it": "^14.2.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.20.4",
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/search": "^6.7.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@lezer/highlight": "^1.2.5",
+    "d3-force": "^3.0.1",
+    "fflate": "^0.8.3",
+    "markdown-it": "^15.0.3"
+  }
+}
