@@ -22,8 +22,11 @@ import { openPicker } from './ui/picker';
 import { fuzzy, highlight } from './core/fuzzy';
 import { escapeHtml } from './ui/dom';
 import { dirname, noteName } from './core/paths';
-import { GraphView } from './graph/graphView';
-import { download, exportVault, importEntries, pickFile, readZip } from './core/zip';
+import { download, pickFile } from './ui/files';
+
+// Sunkesni moduliai kraunami tik prireikus.
+const loadZip = () => import('./core/zip');
+const loadGraph = () => import('./graph/graphView');
 import { confirmDialog } from './ui/dialogs';
 import { join } from './core/paths';
 import { renderWelcome } from './ui/welcome';
@@ -142,6 +145,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     this.tree = new FileTree(vault, {
       onOpen: (p, newTab) => this.openPath(p, newTab),
       onOpenSplit: (p) => this.openInSplit(p),
+      onMoveTo: (p) => this.moveToPicker(p),
       onExpandedChange: () => this.persist(),
     });
     this.ws = new Workspace(this);
@@ -270,10 +274,13 @@ export class App implements WorkspaceHost, EmptyViewFactory {
 
   createGraphView(nav: { back(): void; canBack(): boolean }) {
     const lastNote = () => (this.lastNote && this.vault.has(this.lastNote) ? this.lastNote : null);
-    const gv = new GraphView({
+    const el = h('div', { class: 'graph-view graph-loading' }, h('div', { class: 'loader' }));
+    let gv: import('./graph/graphView').GraphView | null = null;
+    let dead = false;
+    const opts = {
       getData: () => this.index.graph(),
       getActive: lastNote,
-      onOpen: (id, newTab) => {
+      onOpen: (id: string, newTab: boolean) => {
         if (id.startsWith('missing:')) {
           const node = this.index.graph().nodes.find((n) => n.id === id);
           if (node) this.openLink(node.label, { newTab });
@@ -281,9 +288,25 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       },
       onBack: () => nav.back(),
       canBack: () => nav.canBack(),
-      subscribe: (cb) => this.index.on('updated', debounce(cb, 300)),
+      subscribe: (cb: () => void) => this.index.on('updated', debounce(cb, 300)),
+    };
+    loadGraph().then(({ GraphView }) => {
+      if (dead) return;
+      gv = new GraphView(opts);
+      el.replaceWith(gv.el);
     });
-    return { el: gv.el, destroy: () => gv.destroy(), refresh: () => gv.refresh(), focus: (p: string | null) => gv.focus(p) };
+    return {
+      get el() {
+        return gv?.el ?? el;
+      },
+      destroy: () => {
+        dead = true;
+        gv?.destroy();
+        el.remove();
+      },
+      refresh: () => gv?.refresh(),
+      focus: (p: string | null) => gv?.focus(p),
+    };
   }
 
   /** Atidaro grafą (jei jau atidarytas – perjungia į jį). */
@@ -342,6 +365,35 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     });
   }
 
+  /** Aplanko pasirinkimas perkėlimui – veikia ir telefone, kur tempimas neveikia. */
+  moveToPicker(path: string) {
+    const isFolder = this.vault.hasFolder(path) && path !== '';
+    const current = dirname(path);
+    const name = isFolder ? path.split('/').pop()! : noteName(path);
+    const targets = ['', ...this.vault.folders()].filter(
+      (f) => f !== current && !(isFolder && (f === path || f.startsWith(path + '/'))),
+    );
+    openPicker({
+      placeholder: `Perkelti „${name}“ į aplanką…`,
+      footer: '<kbd>↑↓</kbd> pasirinkti <kbd>Enter</kbd> perkelti <kbd>Esc</kbd> atšaukti',
+      items: (q) =>
+        targets
+          .map((f) => ({ f, label: f || '/ (vault šaknis)', r: fuzzy(q, f || '/') }))
+          .filter((x) => x.r)
+          .sort((a, b) => (q ? b.r!.score - a.r!.score : 0))
+          .map((x) => ({ id: x.f, html: x.f ? highlight(x.f, x.r!.indices, escapeHtml) : escapeHtml(x.label), icon: 'folder' })),
+      onPick: async (it) => {
+        try {
+          await this.vault.move(path, it.id);
+          toast(`Perkelta į „${it.id || 'šaknį'}“`);
+        } catch (e) {
+          toast((e as Error).message, 'error');
+        }
+      },
+      empty: 'Kitų aplankų nėra. Sukurkite aplanką failų medyje.',
+    });
+  }
+
   openSearch(query?: string) {
     this.showLeftPanel('search', true);
     this.search.focus(query);
@@ -362,6 +414,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       { id: 'back', name: 'Atgal', icon: 'arrow-left', hotkey: 'Alt+←', run: () => ws.activePane.back() },
       { id: 'forward', name: 'Pirmyn', icon: 'arrow-right', hotkey: 'Alt+→', run: () => ws.activePane.forward() },
       { id: 'tab.close', name: 'Uždaryti skirtuką', icon: 'x', hotkey: 'Alt+W', run: () => ws.activePane.active && ws.activePane.closeTab(ws.activePane.active) },
+      { id: 'note.move', name: 'Perkelti užrašą į kitą aplanką…', icon: 'folder-open', run: () => { const p = this.ws.activePath(); if (p) this.moveToPicker(p); } },
       { id: 'note.rename', name: 'Pervadinti užrašą', icon: 'edit', hotkey: 'F2', run: () => this.renameActive() },
       { id: 'vault.reload', name: 'Perskaityti vault iš naujo', icon: 'refresh', run: () => this.reloadVault() },
       { id: 'vault.switch', name: 'Keisti vault', icon: 'vault', run: () => this.switchVault() },
@@ -431,6 +484,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
   async exportZip() {
     this.ws.flush();
     try {
+      const { exportVault } = await loadZip();
       const blob = await exportVault(this.vault);
       download(blob, `${this.vault.name.replace(/[^\p{L}\p{N}_-]+/gu, '-')}-${App.todayName()}.zip`);
       toast('Vault eksportuotas');
@@ -443,6 +497,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     file ??= await pickFile('.zip,application/zip');
     if (!file) return;
     try {
+      const { readZip, importEntries } = await loadZip();
       const entries = readZip(await file.arrayBuffer());
       if (!entries.length) return toast('Archyve nerasta failų.', 'error');
       const clashes = entries.filter((e) => this.vault.has(e.path)).length;

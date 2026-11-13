@@ -8,6 +8,7 @@ export interface FileTreeOptions {
   onOpen(path: string, newTab: boolean): void;
   onExpandedChange?(expanded: string[]): void;
   onOpenSplit?(path: string): void;
+  onMoveTo?(path: string): void;
 }
 
 interface Node {
@@ -264,6 +265,7 @@ export class FileTree {
       { label: 'Naujas aplankas', icon: 'folder-plus', action: () => this.newFolder(dir) },
       'sep',
       { label: 'Pervadinti', icon: 'edit', action: () => this.startRename(n.path) },
+      { label: 'Perkelti į…', icon: 'folder-open', action: () => this.opts.onMoveTo?.(n.path) },
       { label: 'Ištrinti', icon: 'trash', danger: true, action: () => this.remove(n) },
     ]);
   }

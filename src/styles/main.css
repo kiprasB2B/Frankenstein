@@ -1463,6 +1463,20 @@ kbd {
   pointer-events: none;
 }
 
+/* ---- Įkėlimo indikatorius ---- */
+.graph-loading {
+  align-items: center;
+  justify-content: center;
+}
+.loader {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c-glow);
+  box-shadow: 0 0 12px var(--c-accent), 0 0 30px var(--c-accent);
+  animation: pulse 1s ease-in-out infinite;
+}
+
 /* ---- Tuščias skirtukas ---- */
 .empty-inner {
   text-align: center;

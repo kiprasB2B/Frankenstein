@@ -2,8 +2,6 @@ import { h } from './dom';
 import { icon } from './icons';
 import { LOGO } from './landing';
 import { SAMPLES } from '../samples';
-import { ForceLayout2D } from '../graph/forceLayout2d';
-import { CanvasRenderer2D } from '../graph/canvasRenderer2d';
 import type { GraphData, RenderState } from '../graph/types';
 import { WIKILINK_RE } from '../core/noteIndex';
 
@@ -36,13 +34,9 @@ function sampleGraph(): GraphData {
 
 /** Interaktyvus „pradžios“ ekranas, kai vault tuščias. */
 export function renderWelcome(actions: WelcomeActions): HTMLElement {
-  const layout = new ForceLayout2D();
-  const renderer = new CanvasRenderer2D();
-  const stage = h('div', { class: 'welcome-graph' }, renderer.canvas);
+  const stage = h('div', { class: 'welcome-graph' });
   const card = h('div', { class: 'welcome-card' });
   const state: RenderState = { camera: { x: 0, y: 0, k: 1.5 }, hover: null, active: 'Sveiki atvykę', neighbors: new Set(), filter: '' };
-  const data = sampleGraph();
-  layout.setData(data);
 
   const describe = (id: string | null) => {
     const s = SAMPLES.find((x) => x.name === id);
@@ -75,46 +69,53 @@ export function renderWelcome(actions: WelcomeActions): HTMLElement {
     h('div', { class: 'welcome-visual' }, stage, card),
   );
 
-  let raf = 0;
-  const ro = new ResizeObserver(() => {
-    const r = stage.getBoundingClientRect();
-    renderer.resize(r.width, r.height);
-  });
-  ro.observe(stage);
-  const loop = () => {
-    if (!el.isConnected && raf) {
-      // Vaizdas pašalintas – sustabdome.
-      cancelAnimationFrame(raf);
-      layout.stop();
-      ro.disconnect();
-      return;
-    }
-    const t = performance.now() / 4000;
-    state.camera.x = Math.sin(t) * 6;
-    state.camera.y = Math.cos(t * 0.8) * 4;
-    renderer.draw(layout, state);
+  // Grafo variklis (d3-force) kraunamas tik tada, kai rodomas šis ekranas.
+  Promise.all([import('../graph/forceLayout2d'), import('../graph/canvasRenderer2d')]).then(([{ ForceLayout2D }, { CanvasRenderer2D }]) => {
+    const layout = new ForceLayout2D();
+    const renderer = new CanvasRenderer2D();
+    stage.append(renderer.canvas);
+    layout.setData(sampleGraph());
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      const r = stage.getBoundingClientRect();
+      renderer.resize(r.width, r.height);
+    });
+    ro.observe(stage);
+    const loop = () => {
+      if (!el.isConnected && raf) {
+        // Vaizdas pašalintas – sustabdome.
+        cancelAnimationFrame(raf);
+        layout.stop();
+        ro.disconnect();
+        return;
+      }
+      const t = performance.now() / 4000;
+      state.camera.x = Math.sin(t) * 6;
+      state.camera.y = Math.cos(t * 0.8) * 4;
+      renderer.draw(layout, state);
+      raf = requestAnimationFrame(loop);
+    };
     raf = requestAnimationFrame(loop);
-  };
-  raf = requestAnimationFrame(loop);
 
-  const local = (e: PointerEvent) => {
-    const r = stage.getBoundingClientRect();
-    return [e.clientX - r.left, e.clientY - r.top] as const;
-  };
-  stage.addEventListener('pointermove', (e) => {
-    const n = renderer.pick(layout, state, ...local(e));
-    state.hover = n;
-    state.neighbors = new Set(n ? layout.links.filter((l) => l.source === n || l.target === n).flatMap((l) => [l.source.id, l.target.id]) : []);
-    stage.style.cursor = n ? 'pointer' : 'default';
-    describe(n?.id ?? null);
-  });
-  stage.addEventListener('pointerleave', () => {
-    state.hover = null;
-    describe(null);
-  });
-  stage.addEventListener('click', (e) => {
-    const n = renderer.pick(layout, state, ...local(e as PointerEvent));
-    if (n) actions.createSamples(n.exists ? n.id : SAMPLES[0].name);
+    const local = (e: PointerEvent) => {
+      const r = stage.getBoundingClientRect();
+      return [e.clientX - r.left, e.clientY - r.top] as const;
+    };
+    stage.addEventListener('pointermove', (e) => {
+      const n = renderer.pick(layout, state, ...local(e));
+      state.hover = n;
+      state.neighbors = new Set(n ? layout.links.filter((l) => l.source === n || l.target === n).flatMap((l) => [l.source.id, l.target.id]) : []);
+      stage.style.cursor = n ? 'pointer' : 'default';
+      describe(n?.id ?? null);
+    });
+    stage.addEventListener('pointerleave', () => {
+      state.hover = null;
+      describe(null);
+    });
+    stage.addEventListener('click', (e) => {
+      const n = renderer.pick(layout, state, ...local(e as PointerEvent));
+      if (n) actions.createSamples(n.exists ? n.id : SAMPLES[0].name);
+    });
   });
   return el;
 }
