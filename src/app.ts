@@ -16,6 +16,22 @@ import type { Extension } from '@codemirror/state';
 import { NoteIndex } from './core/noteIndex';
 import { BacklinksPanel } from './ui/backlinks';
 import { wikiLinkExtensions } from './editor/wikilinks';
+import { SearchPanel } from './ui/searchPanel';
+import { TagsPanel } from './ui/tagsPanel';
+import { openPicker } from './ui/picker';
+import { fuzzy, highlight } from './core/fuzzy';
+import { escapeHtml } from './ui/dom';
+import { dirname, noteName } from './core/paths';
+
+export interface Command {
+  id: string;
+  name: string;
+  icon?: string;
+  hotkey?: string;
+  run(): void;
+}
+
+type LeftPanel = 'files' | 'search' | 'tags';
 
 const LAST_VAULT_KEY = 'frankenstein.lastVault';
 
@@ -28,6 +44,11 @@ export class App implements WorkspaceHost, EmptyViewFactory {
   private landing: { el: HTMLElement; destroy(): void } | null = null;
   index!: NoteIndex;
   backlinks!: BacklinksPanel;
+  search!: SearchPanel;
+  tags!: TagsPanel;
+  private leftPanel: LeftPanel = 'files';
+  private leftSwitch!: HTMLElement;
+  private leftHost!: HTMLElement;
   private renderer = createRenderer({ resolve: (t) => this.index?.resolve(t) });
   private ready = false;
 
@@ -117,7 +138,13 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       h('span', { class: 'vault-kind', html: icon(vault.adapter.kind === 'fs' ? 'folder' : 'vault', 14) }),
       h('span', null, vault.name),
     );
-    this.topActions = h('div', { class: 'topbar-actions' });
+    const tb = (ic: string, title: string, fn: () => void) => h('button', { class: 'icon-btn', title, 'aria-label': title, html: icon(ic, 18), onclick: fn });
+    this.topActions = h(
+      'div',
+      { class: 'topbar-actions' },
+      tb('search', 'Greitas perjungiklis (Ctrl+O)', () => this.quickSwitcher()),
+      tb('command', 'Komandų paletė (Ctrl+P)', () => this.commandPalette()),
+    );
     const topbar = h(
       'header',
       { class: 'topbar' },
@@ -130,7 +157,21 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       h('button', { class: 'icon-btn', title: 'Dešinysis skydelis', html: icon('panel-right', 18), onclick: () => this.toggleSide('right') }),
     );
 
-    this.left = h('aside', { class: 'sidebar sidebar-left' }, this.tree.el);
+    this.search = new SearchPanel(vault, (p, newTab, line) => this.openPath(p, newTab, line));
+    this.tags = new TagsPanel(this.index, (p, newTab) => this.openPath(p, newTab));
+    this.tags.render();
+    const sw = (id: LeftPanel, ic: string, title: string) =>
+      h('button', { class: 'side-tab', 'data-panel': id, title, 'aria-label': title, html: icon(ic, 16), onclick: () => this.showLeftPanel(id) });
+    this.leftSwitch = h(
+      'div',
+      { class: 'side-tabs', role: 'tablist' },
+      sw('files', 'folder', 'Failai'),
+      sw('search', 'search', 'Paieška (Ctrl+Shift+F)'),
+      sw('tags', 'hash', 'Žymos'),
+    );
+    this.leftHost = h('div', { class: 'side-host' });
+    this.left = h('aside', { class: 'sidebar sidebar-left' }, this.leftSwitch, this.leftHost);
+    this.showLeftPanel('files');
     this.backlinks = new BacklinksPanel(
       this.index,
       (p, newTab, line) => this.openPath(p, newTab, line),
@@ -147,6 +188,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
 
   private restoreState(s: WorkspaceState) {
     this.tree.expanded = new Set(s.expanded ?? []);
+    if (s.leftPanel) this.showLeftPanel(s.leftPanel as LeftPanel);
     if (!isMobile()) {
       this.shell.classList.toggle('left-collapsed', !!s.leftCollapsed);
       this.shell.classList.toggle('right-collapsed', !!s.rightCollapsed);
@@ -188,7 +230,113 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     this.openPath(path, opts.newTab);
   }
 
-  onTagClick(_tag: string) {}
+  onTagClick(tag: string) {
+    this.tags.select(tag);
+    this.showLeftPanel('tags', true);
+  }
+
+  showLeftPanel(id: LeftPanel, reveal = false) {
+    this.leftPanel = id;
+    const el = id === 'files' ? this.tree.el : id === 'search' ? this.search.el : this.tags.el;
+    if (this.leftHost.firstChild !== el) {
+      this.leftHost.replaceChildren(el);
+      el.classList.remove('slide-in');
+      void el.offsetWidth;
+      el.classList.add('slide-in');
+    }
+    this.leftSwitch.querySelectorAll<HTMLElement>('.side-tab').forEach((b) => b.classList.toggle('on', b.dataset.panel === id));
+    if (reveal) {
+      if (isMobile()) this.shell.classList.add('left-open');
+      else this.shell.classList.remove('left-collapsed');
+    }
+    this.persist();
+  }
+
+  // ---------- Paieška ir komandos ----------
+
+  quickSwitcher() {
+    openPicker({
+      placeholder: 'Įveskite užrašo pavadinimą…',
+      footer: '<kbd>↑↓</kbd> pasirinkti <kbd>Enter</kbd> atidaryti <kbd>Ctrl+Enter</kbd> naujame skirtuke <kbd>Esc</kbd> uždaryti',
+      items: (q) => {
+        const notes = this.vault.notes();
+        if (!q.trim()) {
+          return notes.slice(0, 50).map((p) => ({ id: p, html: escapeHtml(noteName(p)), detail: dirname(p), icon: 'file' }));
+        }
+        const res = notes
+          .map((p) => ({ p, r: fuzzy(q, noteName(p)) ?? (fuzzy(q, p) ? { score: fuzzy(q, p)!.score - 50, indices: [] } : null) }))
+          .filter((x) => x.r)
+          .sort((a, b) => b.r!.score - a.r!.score)
+          .map((x) => ({ id: x.p, html: highlight(noteName(x.p), x.r!.indices, escapeHtml), detail: dirname(x.p), icon: 'file' }));
+        if (!this.index.resolve(q.trim())) res.push({ id: '\0new', html: `Sukurti „${escapeHtml(q.trim())}“`, detail: '', icon: 'file-plus' });
+        return res;
+      },
+      onPick: (it, q, e) => {
+        if (it.id === '\0new') this.openLink(q.trim(), { newTab: e.ctrlKey || e.metaKey });
+        else this.openPath(it.id, e.ctrlKey || e.metaKey);
+      },
+      empty: 'Užrašų nerasta.',
+    });
+  }
+
+  commandPalette() {
+    const cmds = this.commands();
+    openPicker({
+      placeholder: 'Įveskite komandą…',
+      items: (q) =>
+        cmds
+          .map((c) => ({ c, r: fuzzy(q, c.name) }))
+          .filter((x) => x.r)
+          .sort((a, b) => (q ? b.r!.score - a.r!.score : 0))
+          .map((x) => ({ id: x.c.id, html: highlight(x.c.name, x.r!.indices, escapeHtml), icon: x.c.icon ?? 'spark', hint: x.c.hotkey })),
+      onPick: (it) => cmds.find((c) => c.id === it.id)?.run(),
+      footer: '<kbd>↑↓</kbd> pasirinkti <kbd>Enter</kbd> vykdyti <kbd>Esc</kbd> uždaryti',
+    });
+  }
+
+  openSearch(query?: string) {
+    this.showLeftPanel('search', true);
+    this.search.focus(query);
+  }
+
+  commands(): Command[] {
+    const ws = this.ws;
+    return [
+      { id: 'note.new', name: 'Naujas užrašas', icon: 'file-plus', hotkey: 'Alt+N', run: () => this.newNote() },
+      { id: 'switcher', name: 'Greitas perjungiklis: atidaryti užrašą', icon: 'search', hotkey: 'Ctrl+O', run: () => this.quickSwitcher() },
+      { id: 'search', name: 'Ieškoti visuose užrašuose', icon: 'search', hotkey: 'Ctrl+Shift+F', run: () => this.openSearch() },
+      { id: 'mode', name: 'Perjungti šaltinį / peržiūrą', icon: 'eye', hotkey: 'Ctrl+E', run: () => ws.activePane.toggleMode() },
+      { id: 'tags', name: 'Rodyti žymas', icon: 'hash', run: () => this.showLeftPanel('tags', true) },
+      { id: 'files', name: 'Rodyti failų medį', icon: 'folder', run: () => this.showLeftPanel('files', true) },
+      { id: 'left', name: 'Rodyti / slėpti kairįjį skydelį', icon: 'panel-left', run: () => this.toggleSide('left') },
+      { id: 'right', name: 'Rodyti / slėpti nuorodų skydelį', icon: 'panel-right', run: () => this.toggleSide('right') },
+      { id: 'back', name: 'Atgal', icon: 'arrow-left', hotkey: 'Alt+←', run: () => ws.activePane.back() },
+      { id: 'forward', name: 'Pirmyn', icon: 'arrow-right', hotkey: 'Alt+→', run: () => ws.activePane.forward() },
+      { id: 'tab.close', name: 'Uždaryti skirtuką', icon: 'x', hotkey: 'Alt+W', run: () => ws.activePane.active && ws.activePane.closeTab(ws.activePane.active) },
+      { id: 'note.rename', name: 'Pervadinti užrašą', icon: 'edit', hotkey: 'F2', run: () => this.renameActive() },
+      { id: 'vault.reload', name: 'Perskaityti vault iš naujo', icon: 'refresh', run: () => this.reloadVault() },
+      { id: 'vault.switch', name: 'Keisti vault', icon: 'vault', run: () => this.switchVault() },
+      ...this.extraCommands(),
+    ];
+  }
+
+  /** Vėlesnių etapų komandos. */
+  protected extraCommands(): Command[] {
+    return [];
+  }
+
+  renameActive() {
+    const t = this.center.querySelector<HTMLInputElement>('.pane.active-pane .note-title') ?? this.center.querySelector<HTMLInputElement>('.note-title');
+    t?.focus();
+    t?.select();
+  }
+
+  async reloadVault() {
+    this.ws.flush();
+    await this.vault.load();
+    this.ws.panes.forEach((p) => p.renderBody());
+    toast('Vault perskaitytas iš naujo');
+  }
 
   onActiveChange() {
     if (!this.ready) return;
@@ -205,6 +353,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       leftCollapsed: this.shell.classList.contains('left-collapsed'),
       rightCollapsed: this.shell.classList.contains('right-collapsed'),
       expanded: [...this.tree.expanded],
+      leftPanel: this.leftPanel,
     };
     this.vault.writeJSON('workspace.json', state);
   }, 600);
@@ -282,6 +431,11 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     if (mod && !e.shiftKey && k === 's') return run(() => this.ws.flush());
     if (e.altKey && !mod && e.key === 'ArrowLeft') return run(() => this.ws.activePane.back());
     if (e.altKey && !mod && e.key === 'ArrowRight') return run(() => this.ws.activePane.forward());
+    if (mod && e.shiftKey && k === 'f') return run(() => this.openSearch());
+    if (mod && !e.shiftKey && k === 'o') return run(() => this.quickSwitcher());
+    if (mod && !e.shiftKey && k === 'p') return run(() => this.commandPalette());
+    if (e.altKey && !mod && e.code === 'KeyN') return run(() => this.newNote());
+    if (e.altKey && !mod && e.code === 'KeyW') return run(() => this.commands().find((c) => c.id === 'tab.close')!.run());
     this.onExtraKey(e, mod, k, run);
   }
 

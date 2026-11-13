@@ -1087,6 +1087,293 @@ input {
   color: var(--c-text-faint);
 }
 
+/* ---- Kairiojo skydelio perjungiklis ---- */
+.side-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px var(--s-2) 0;
+  flex-shrink: 0;
+}
+.side-tab {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  height: 30px;
+  align-items: center;
+  border: 0;
+  border-bottom: 1px solid var(--c-line);
+  background: none;
+  color: var(--c-text-faint);
+  cursor: pointer;
+  transition: all var(--dur) var(--ease);
+}
+.side-tab:hover {
+  color: var(--c-text);
+}
+.side-tab.on {
+  color: var(--c-accent);
+  border-bottom-color: var(--c-accent);
+  box-shadow: 0 1px 0 0 var(--c-accent), 0 6px 10px -8px var(--c-accent);
+  filter: drop-shadow(0 0 3px rgba(var(--rgb-accent), 0.5));
+}
+.side-host {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.slide-in {
+  animation: slide-in 240ms var(--ease);
+}
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 var(--s-2);
+  padding: 4px var(--s-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--c-accent);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: all var(--dur);
+}
+.back-link:hover {
+  background: rgba(var(--rgb-accent), 0.08);
+  text-shadow: var(--glow-text);
+}
+.back-link:hover .icon {
+  transform: translateX(-2px);
+}
+.back-link .icon {
+  transition: transform var(--dur) var(--ease);
+}
+
+/* ---- Paieška ---- */
+.search-box {
+  position: relative;
+  margin: 0 var(--s-2) var(--s-2);
+}
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  color: var(--c-text-faint);
+}
+.search-input {
+  padding-left: 30px;
+}
+.search-summary {
+  padding: 0 var(--s-3) var(--s-2);
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+}
+.search-summary:empty {
+  display: none;
+}
+.search-group {
+  margin-bottom: var(--s-3);
+  animation: rise 220ms var(--ease) both;
+}
+.search-file,
+.search-hit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius);
+}
+.search-file {
+  padding: 4px var(--s-1);
+  font-size: var(--fs-sm);
+  color: var(--c-text);
+}
+.search-file:hover {
+  color: var(--c-accent);
+}
+.search-file-name {
+  font-weight: 500;
+}
+.search-file-dir {
+  flex: 1;
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.search-hit {
+  display: block;
+  padding: 4px var(--s-2) 4px var(--s-5);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--c-text-dim);
+  border-left: 1px solid var(--c-line);
+  border-radius: 0;
+  margin-left: 10px;
+  transition: all var(--dur);
+}
+.search-hit:hover {
+  border-left-color: var(--c-accent);
+  background: rgba(var(--rgb-accent), 0.06);
+  color: var(--c-text);
+}
+
+/* ---- Žymos ---- */
+.tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: var(--s-1);
+}
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 10px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: 999px;
+  background: none;
+  font-size: var(--fs-sm);
+  color: var(--c-text-dim);
+  cursor: pointer;
+  transition: all var(--dur) var(--ease);
+}
+.tag-chip:hover {
+  border-color: rgba(var(--rgb-accent), 0.6);
+  color: var(--c-accent);
+  box-shadow: var(--glow-sm);
+}
+.tag-chip.on {
+  border-color: var(--c-accent);
+  background: rgba(var(--rgb-accent), 0.14);
+  color: var(--c-glow);
+  box-shadow: var(--glow-md);
+}
+.tag-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--c-surface-2);
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+.note-link .search-file-dir {
+  text-align: right;
+}
+
+/* ---- Paletė / perjungiklis ---- */
+.picker-overlay {
+  padding-top: 12vh;
+}
+.picker {
+  width: min(600px, 100% - 24px);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--c-raised);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(var(--rgb-accent), 0.12), 0 0 30px -10px rgba(var(--rgb-accent), 0.4);
+  overflow: hidden;
+  transform: translateY(-8px) scale(0.98);
+  transition: transform var(--dur) var(--ease);
+}
+.overlay.open .picker {
+  transform: none;
+}
+.picker-search {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0 var(--s-4);
+  border-bottom: 1px solid var(--c-line);
+  color: var(--c-accent);
+}
+.picker-input {
+  flex: 1;
+  height: 48px;
+  border: 0;
+  background: none;
+  outline: none;
+  font-size: var(--fs-lg);
+  font-weight: 300;
+}
+.picker-list {
+  max-height: min(52vh, 420px);
+  overflow: auto;
+  padding: var(--s-1);
+}
+.picker-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 7px var(--s-3);
+  border-radius: var(--radius);
+  color: var(--c-text-dim);
+  cursor: pointer;
+}
+.picker-item.sel {
+  background: rgba(var(--rgb-accent), 0.1);
+  color: var(--c-text);
+  box-shadow: inset 2px 0 0 var(--c-accent);
+}
+.picker-icon {
+  display: inline-flex;
+  color: var(--c-text-faint);
+}
+.picker-item.sel .picker-icon {
+  color: var(--c-accent);
+}
+.picker-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+}
+.picker-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.picker-title mark {
+  background: none;
+  color: var(--c-accent);
+  text-shadow: var(--glow-text);
+}
+.picker-detail {
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+  white-space: nowrap;
+}
+.picker-empty {
+  padding: var(--s-4);
+  text-align: center;
+  color: var(--c-text-faint);
+}
+.picker-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-4);
+  border-top: 1px solid var(--c-line);
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+}
+kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--c-text-dim);
+  background: var(--c-surface);
+  margin-right: 3px;
+}
+
 /* ---- Tuščias skirtukas ---- */
 .empty-inner {
   text-align: center;
@@ -1267,6 +1554,12 @@ input {
   from {
     opacity: 0;
     transform: translateY(4px);
+  }
+}
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
   }
 }
 @keyframes pulse {
