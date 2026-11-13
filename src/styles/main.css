@@ -1004,6 +1004,89 @@ input {
   transform: rotate(45deg);
 }
 
+/* ---- Nuorodų skydelis ---- */
+.bl-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: var(--s-3) var(--s-1) var(--s-2);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-faint);
+}
+.count {
+  min-width: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--c-line);
+  border-radius: 999px;
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--c-text-dim);
+}
+.bl-card {
+  margin-bottom: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  animation: rise 260ms var(--ease) both;
+  transition: all var(--dur) var(--ease);
+}
+.bl-card:hover {
+  border-color: rgba(var(--rgb-accent), 0.5);
+  box-shadow: var(--glow-sm);
+  transform: translateX(-2px);
+}
+.bl-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--c-text);
+}
+.bl-card:hover .bl-title {
+  color: var(--c-accent);
+}
+.bl-line {
+  margin-top: 4px;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--c-text-faint);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.bl-line mark,
+.search-hit mark {
+  background: none;
+  color: var(--c-accent);
+  text-shadow: var(--glow-text);
+}
+.bl-out {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px var(--s-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  font-size: var(--fs-sm);
+  color: var(--c-accent);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur);
+}
+.bl-out:hover {
+  background: rgba(var(--rgb-accent), 0.08);
+}
+.bl-out.unresolved {
+  color: var(--c-text-faint);
+}
+
 /* ---- Tuščias skirtukas ---- */
 .empty-inner {
   text-align: center;

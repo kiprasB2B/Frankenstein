@@ -97,6 +97,23 @@ export class NoteView {
     else requestAnimationFrame(() => this.view.requestMeasure());
   }
 
+  /** Pažymi eilutę (0-based) ir nuslenka iki jos. */
+  revealLine(line: number) {
+    const doc = this.view.state.doc;
+    const l = doc.line(Math.min(Math.max(1, line + 1), doc.lines));
+    if (this.tab?.mode === 'preview') {
+      const els = this.previewEl.querySelectorAll<HTMLElement>('[data-src-line]');
+      let best: HTMLElement | null = null;
+      els.forEach((el) => {
+        if (Number(el.dataset.srcLine) <= line) best = el;
+      });
+      (best as HTMLElement | null)?.scrollIntoView({ block: 'center' });
+      return;
+    }
+    this.view.dispatch({ selection: { anchor: l.from, head: l.to }, effects: EditorView.scrollIntoView(l.from, { y: 'center' }) });
+    this.view.focus();
+  }
+
   focus() {
     if (this.tab?.mode === 'source') this.view.focus();
   }

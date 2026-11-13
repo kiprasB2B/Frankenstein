@@ -13,6 +13,9 @@ import { Workspace } from './workspace/workspace';
 import { DEFAULT_SETTINGS, type Settings, type WorkspaceHost, type WorkspaceState, type EmptyViewFactory } from './workspace/types';
 import type { NoteView } from './workspace/noteView';
 import type { Extension } from '@codemirror/state';
+import { NoteIndex } from './core/noteIndex';
+import { BacklinksPanel } from './ui/backlinks';
+import { wikiLinkExtensions } from './editor/wikilinks';
 
 const LAST_VAULT_KEY = 'frankenstein.lastVault';
 
@@ -23,7 +26,9 @@ export class App implements WorkspaceHost, EmptyViewFactory {
   tree!: FileTree;
   ws!: Workspace;
   private landing: { el: HTMLElement; destroy(): void } | null = null;
-  private renderer = createRenderer({ resolve: () => undefined });
+  index!: NoteIndex;
+  backlinks!: BacklinksPanel;
+  private renderer = createRenderer({ resolve: (t) => this.index?.resolve(t) });
   private ready = false;
 
   // Karkaso elementai
@@ -93,7 +98,9 @@ export class App implements WorkspaceHost, EmptyViewFactory {
   }
 
   /** Vieta indeksui ir kitiems moduliams, kurie priklauso nuo vault turinio. */
-  protected async onVaultLoaded() {}
+  protected async onVaultLoaded() {
+    this.index = new NoteIndex(this.vault);
+  }
 
   private buildShell() {
     const vault = this.vault;
@@ -124,7 +131,12 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     );
 
     this.left = h('aside', { class: 'sidebar sidebar-left' }, this.tree.el);
-    this.right = h('aside', { class: 'sidebar sidebar-right' });
+    this.backlinks = new BacklinksPanel(
+      this.index,
+      (p, newTab, line) => this.openPath(p, newTab, line),
+      (t) => this.openLink(t),
+    );
+    this.right = h('aside', { class: 'sidebar sidebar-right' }, this.backlinks.el);
     this.center = h('main', { class: 'workspace' }, this.ws.el);
     const backdrop = h('div', { class: 'backdrop', onclick: () => this.closeDrawers() });
 
@@ -150,19 +162,40 @@ export class App implements WorkspaceHost, EmptyViewFactory {
   }
 
   editorExtensions(_view: NoteView): Extension[] {
-    return [];
+    return wikiLinkExtensions({
+      notes: () => this.vault.notes(),
+      tags: () => this.index.tags().map((t) => t.tag),
+      exists: (t) => !!this.index.resolve(t),
+      open: (t, newTab) => this.openLink(t, { newTab }),
+      openTag: (t) => this.onTagClick(t),
+    });
   }
 
-  openLink(target: string, opts: { newTab?: boolean; from?: string } = {}) {
-    const path = this.vault.findByName(target);
-    if (path) this.openPath(path, opts.newTab);
+  /** Atidaro [[nuorodą]]; jei tokio užrašo nėra – sukuria jį. */
+  async openLink(target: string, opts: { newTab?: boolean; from?: string } = {}) {
+    let path = this.index.resolve(target);
+    if (!path) {
+      const p = this.index.pathForNew(target);
+      try {
+        await this.vault.write(p, '');
+        path = p;
+        toast(`Sukurtas užrašas „${target}“`);
+      } catch (e) {
+        toast('Nepavyko sukurti užrašo: ' + (e as Error).message, 'error');
+        return;
+      }
+    }
+    this.openPath(path, opts.newTab);
   }
 
   onTagClick(_tag: string) {}
 
   onActiveChange() {
     if (!this.ready) return;
-    this.tree.setActive(this.ws.activePath());
+    const p = this.ws.activePath();
+    this.tree.setActive(p);
+    this.backlinks.setPath(p);
+    document.title = p ? `${p.split('/').pop()!.replace(/\.md$/, '')} – Frankenstein` : 'Frankenstein';
   }
 
   persist = debounce(() => {
@@ -196,9 +229,10 @@ export class App implements WorkspaceHost, EmptyViewFactory {
 
   // ---------- Veiksmai ----------
 
-  openPath(path: string, newTab = false) {
+  openPath(path: string, newTab = false, line?: number) {
     this.ws.openNote(path, { newTab });
     this.closeDrawers();
+    if (line !== undefined) requestAnimationFrame(() => this.ws.activeNoteView()?.revealLine(line));
   }
 
   async newNote(dir = '') {
