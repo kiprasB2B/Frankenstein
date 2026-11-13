@@ -152,13 +152,14 @@ export class Pane {
     this.noteView?.flush();
     t.mode = mode;
     this.noteView?.applyMode(mode);
-    if (mode === 'source') this.noteView?.focus();
+    if (mode !== 'preview') this.noteView?.focus();
     this.renderChrome();
     this.host.persist();
   }
 
   toggleMode() {
-    if (this.active?.loc.kind === 'note') this.setMode(this.active.mode === 'source' ? 'preview' : 'source');
+    // Ctrl+E: gyva peržiūra ↔ šaltinis (iš skaitymo režimo – į gyvą peržiūrą).
+    if (this.active?.loc.kind === 'note') this.setMode(this.active.mode === 'live' ? 'source' : 'live');
   }
 
   // ---------- Atvaizdavimas ----------
@@ -287,17 +288,21 @@ export class Pane {
     } else if (t) crumbs.append(h('span', { class: 'crumb current' }, t.title));
     this.header.append(crumbs, h('span', { class: 'save-status' }));
     if (t?.loc.kind === 'note') {
-      const preview = t.mode === 'preview';
+      const seg = (mode: Mode, ic: string, label: string, title: string) =>
+        h('button', {
+          class: 'mode-opt' + (t.mode === mode ? ' sel' : ''),
+          title,
+          'aria-pressed': String(t.mode === mode),
+          html: icon(ic, 14) + `<span>${label}</span>`,
+          onclick: () => this.setMode(mode),
+        });
       this.header.append(
         h(
-          'button',
-          {
-            class: 'mode-toggle' + (preview ? ' on' : ''),
-            title: 'Perjungti režimą (Ctrl+E)',
-            onclick: () => this.toggleMode(),
-          },
-          h('span', { class: 'mode-opt' + (!preview ? ' sel' : ''), html: icon('code', 14) + '<span>Šaltinis</span>' }),
-          h('span', { class: 'mode-opt' + (preview ? ' sel' : ''), html: icon('eye', 14) + '<span>Peržiūra</span>' }),
+          'div',
+          { class: 'mode-toggle', role: 'group', 'aria-label': 'Redaktoriaus režimas' },
+          seg('live', 'edit', 'Gyva', 'Gyva peržiūra – Markdown slepiamas redaguojant (Ctrl+E)'),
+          seg('source', 'code', 'Šaltinis', 'Šaltinio režimas – matomas visas Markdown (Ctrl+E)'),
+          seg('preview', 'eye', 'Skaitymas', 'Skaitymo režimas – tik peržiūra'),
         ),
       );
     }

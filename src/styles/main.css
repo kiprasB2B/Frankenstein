@@ -756,18 +756,21 @@ input {
 }
 .mode-toggle {
   display: flex;
+  gap: 2px;
   padding: 2px;
   margin-right: 4px;
   border: 1px solid var(--c-line);
   border-radius: var(--radius);
   background: none;
-  cursor: pointer;
   transition: border-color var(--dur);
 }
 .mode-toggle:hover {
   border-color: rgba(var(--rgb-accent), 0.5);
 }
 .mode-opt {
+  border: 0;
+  background: none;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -776,6 +779,9 @@ input {
   font-size: var(--fs-xs);
   color: var(--c-text-faint);
   transition: all var(--dur) var(--ease);
+}
+.mode-opt:not(.sel):hover {
+  color: var(--c-text);
 }
 .mode-opt.sel {
   color: var(--c-accent);
@@ -821,6 +827,10 @@ input {
 }
 .note-title:focus {
   text-shadow: var(--glow-text);
+}
+.note-title:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 .note-editor {
   flex: 1;

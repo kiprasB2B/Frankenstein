@@ -2,7 +2,8 @@ import type { Extension } from '@codemirror/state';
 import type { Vault } from '../core/vault';
 import type { NoteView } from './noteView';
 
-export type Mode = 'source' | 'preview';
+/** source – Markdown šaltinis, live – gyva peržiūra redaktoriuje, preview – skaitymo vaizdas. */
+export type Mode = 'source' | 'live' | 'preview';
 
 /** Vieta skirtuke: užrašas arba specialus vaizdas (grafas). */
 export type Location = { kind: 'note'; path: string } | { kind: 'graph' } | { kind: 'empty' };
@@ -33,7 +34,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  defaultMode: 'source',
+  defaultMode: 'live',
   dailyFolder: 'Dienos užrašai',
   autosaveDelay: 400,
 };
@@ -47,6 +48,8 @@ export interface WorkspaceHost {
   /** Atidaro wiki nuorodą; jei užrašo nėra – sukuria. */
   openLink(target: string, opts?: { newTab?: boolean; from?: string }): void;
   onTagClick(tag: string): void;
+  /** Paveikslėlio adresas peržiūrai (vault failas → blob URL). */
+  resolveImage?(src: string, fromPath?: string): Promise<string | null>;
   /** Kviečiama, kai pasikeičia aktyvus skirtukas / užrašas. */
   onActiveChange(): void;
   /** Kviečiama, kai reikia išsaugoti darbo vietos būseną. */

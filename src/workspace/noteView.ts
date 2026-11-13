@@ -1,5 +1,6 @@
 import { EditorView } from '@codemirror/view';
-import type { EditorState } from '@codemirror/state';
+import { Compartment, type EditorState } from '@codemirror/state';
+import { livePreview } from '../editor/livePreview';
 import { createEditorState } from '../editor/setup';
 import { toggleTaskAt } from '../editor/markdown';
 import { h } from '../ui/dom';
@@ -19,6 +20,7 @@ export class NoteView {
   tab: Tab | null = null;
   private saveTimer: ReturnType<typeof debounce>;
   private dirty = false;
+  private live = new Compartment();
   onStatus: (s: 'saving' | 'saved' | 'error') => void = () => {};
 
   constructor(private host: WorkspaceHost) {
@@ -43,7 +45,7 @@ export class NoteView {
     this.previewEl.addEventListener('click', (e) => this.onPreviewClick(e));
     this.previewEl.addEventListener('dblclick', (e) => {
       if ((e.target as HTMLElement).closest('a, input')) return;
-      this.tab?.pane.setMode('source');
+      this.tab?.pane.setMode('live');
     });
   }
 
@@ -74,7 +76,7 @@ export class NoteView {
         this.onStatus('saving');
         this.saveTimer();
       },
-      extra: this.host.editorExtensions(this),
+      extra: [...this.host.editorExtensions(this), this.live.of(this.liveExt(this.tab?.mode ?? 'source'))],
     });
   }
 
@@ -90,9 +92,21 @@ export class NoteView {
     return this.tab?.mode === 'preview' ? this.el : (this.view.scrollDOM as HTMLElement);
   }
 
+  private liveExt(mode: Mode) {
+    return mode === 'live'
+      ? livePreview({
+          openLink: (t, newTab) => this.host.openLink(t, { newTab, from: this.path ?? undefined }),
+          resolveImage: this.host.resolveImage ? (src, from) => this.host.resolveImage!(src, from) : undefined,
+          currentPath: () => this.path,
+        })
+      : [];
+  }
+
   applyMode(mode: Mode) {
     this.el.classList.toggle('mode-preview', mode === 'preview');
     this.el.classList.toggle('mode-source', mode === 'source');
+    this.el.classList.toggle('mode-live', mode === 'live');
+    if (mode !== 'preview') this.view.dispatch({ effects: this.live.reconfigure(this.liveExt(mode)) });
     if (mode === 'preview') this.renderPreview();
     else requestAnimationFrame(() => this.view.requestMeasure());
   }
@@ -115,7 +129,7 @@ export class NoteView {
   }
 
   focus() {
-    if (this.tab?.mode === 'source') this.view.focus();
+    if (this.tab?.mode !== 'preview') this.view.focus();
   }
 
   renderPreview() {
