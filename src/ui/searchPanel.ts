@@ -120,6 +120,17 @@ export class SearchPanel {
       this.results.append(h('div', { class: 'empty-hint' }, 'Įveskite žodį ar frazę. Ieškoma užrašų pavadinimuose ir turinyje, nekreipiant dėmesio į didžiąsias raides ir diakritiką.'));
       return;
     }
+    this.results.append(
+      h('button', {
+        class: 'back-link',
+        html: icon('arrow-left', 14) + '<span>Išvalyti paiešką</span>',
+        onclick: () => {
+          this.input.value = '';
+          this.run();
+          this.input.focus();
+        },
+      }),
+    );
     const hits = this.search(q);
     const total = hits.reduce((s, x) => s + x.total, 0);
     this.summary.textContent = hits.length ? `${hits.length} užraš. · ${total} atitikm.` : '';

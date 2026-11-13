@@ -1480,6 +1480,120 @@ kbd {
   flex-wrap: wrap;
 }
 
+/* ---- Tuščio vault pradžios ekranas ---- */
+.welcome {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(260px, 380px) minmax(280px, 1fr);
+  align-items: center;
+  gap: var(--s-6);
+  padding: var(--s-6);
+  overflow: auto;
+  animation: rise 500ms var(--ease) both;
+}
+.welcome-text h2 {
+  margin: var(--s-3) 0 var(--s-2);
+  font-weight: 300;
+  font-size: 26px;
+  letter-spacing: 0.02em;
+}
+.welcome-text p {
+  color: var(--c-text-dim);
+  font-weight: 300;
+  margin: 0 0 var(--s-5);
+}
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+.welcome-visual {
+  position: relative;
+  height: min(60vh, 460px);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 50%, rgba(var(--rgb-accent), 0.06), transparent 65%);
+}
+.welcome-graph {
+  position: absolute;
+  inset: 0;
+}
+.welcome-card {
+  position: absolute;
+  left: var(--s-3);
+  right: var(--s-3);
+  bottom: var(--s-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius);
+  background: rgba(var(--rgb-bg), 0.85);
+  font-size: var(--fs-sm);
+  pointer-events: none;
+}
+.welcome-card strong {
+  font-weight: 500;
+  color: var(--c-accent);
+  text-shadow: var(--glow-text);
+}
+.welcome-card span {
+  color: var(--c-text-dim);
+}
+.welcome-card em {
+  font-style: normal;
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+}
+.shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  justify-content: center;
+  gap: var(--s-2) var(--s-5);
+  margin-top: var(--s-5);
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+  text-align: left;
+}
+.shortcuts div {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.empty-inner p {
+  color: var(--c-text-dim);
+}
+
+/* ---- Siauros ekrano dalys (padalijimas, planšetė) ---- */
+.pane {
+  container-type: inline-size;
+}
+@container (max-width: 560px) {
+  .crumbs {
+    visibility: hidden;
+  }
+  .mode-opt span {
+    display: none;
+  }
+  .save-status {
+    display: none;
+  }
+  .note-title-wrap,
+  .note-view.mode-preview .note-preview {
+    padding-left: var(--s-4);
+    padding-right: var(--s-4);
+  }
+  .welcome {
+    grid-template-columns: 1fr;
+    padding: var(--s-4);
+  }
+  .welcome-visual {
+    height: 300px;
+  }
+}
+
 /* ==========================================================================
    Dialogai, meniu, pranešimai
    ========================================================================== */
@@ -1722,6 +1836,45 @@ kbd {
   }
   .tree-row {
     height: 36px;
+  }
+  .topbar {
+    padding: 0 var(--s-2);
+    gap: 2px;
+  }
+  .topbar .icon-btn {
+    width: 34px;
+    height: 34px;
+  }
+  .note-title {
+    font-size: 24px;
+  }
+  .note-title-wrap {
+    padding-top: var(--s-4);
+  }
+  .tab {
+    min-width: 0;
+    max-width: 150px;
+  }
+  .panes.split {
+    flex-direction: column;
+  }
+  .pane-divider {
+    width: auto;
+    height: 1px;
+  }
+  .graph-filter {
+    width: 130px;
+  }
+  .graph-hint span:last-child {
+    display: none;
+  }
+  .picker-overlay {
+    padding-top: var(--s-3);
+  }
+  .toasts {
+    left: var(--s-3);
+    right: var(--s-3);
+    bottom: calc(var(--s-3) + env(safe-area-inset-bottom));
   }
   .tree-more {
     opacity: 1;

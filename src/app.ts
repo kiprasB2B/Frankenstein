@@ -26,6 +26,8 @@ import { GraphView } from './graph/graphView';
 import { download, exportVault, importEntries, pickFile, readZip } from './core/zip';
 import { confirmDialog } from './ui/dialogs';
 import { join } from './core/paths';
+import { renderWelcome } from './ui/welcome';
+import { SAMPLES } from './samples';
 
 export interface Command {
   id: string;
@@ -55,6 +57,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
   private leftHost!: HTMLElement;
   private renderer = createRenderer({ resolve: (t) => this.index?.resolve(t) });
   private ready = false;
+  private lastNote: string | null = null;
 
   // Karkaso elementai
   shell!: HTMLElement;
@@ -266,15 +269,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
   }
 
   createGraphView(nav: { back(): void; canBack(): boolean }) {
-    const lastNote = () => {
-      for (const p of [this.ws.activePane, ...this.ws.panes]) {
-        const t = p.active;
-        if (t?.loc.kind === 'note') return t.loc.path;
-        const prev = t?.history.slice(0, t.idx).reverse().find((l) => l.kind === 'note');
-        if (prev?.kind === 'note') return prev.path;
-      }
-      return null;
-    };
+    const lastNote = () => (this.lastNote && this.vault.has(this.lastNote) ? this.lastNote : null);
     const gv = new GraphView({
       getData: () => this.index.graph(),
       getActive: lastNote,
@@ -405,6 +400,15 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     this.openPath(path);
   }
 
+  async createSamples(open = SAMPLES[0].name) {
+    for (const s of SAMPLES) {
+      const p = s.name + '.md';
+      if (!this.vault.has(p)) await this.vault.write(p, s.body + '\n');
+    }
+    toast('Sukurti pavyzdiniai užrašai');
+    this.openPath(open + '.md');
+  }
+
   toggleSplit() {
     if (this.ws.panes.length > 1) this.ws.closePane(this.ws.activePane);
     else this.ws.split();
@@ -472,6 +476,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
   onActiveChange() {
     if (!this.ready) return;
     const p = this.ws.activePath();
+    if (p) this.lastNote = p;
     this.tree.setActive(p);
     this.backlinks.setPath(p);
     if (p) this.ws.panes.forEach((x) => x.focusGraph(p));
@@ -491,6 +496,14 @@ export class App implements WorkspaceHost, EmptyViewFactory {
   }, 600);
 
   renderEmpty(): HTMLElement {
+    if (this.vault.isEmpty()) {
+      return renderWelcome({
+        createSamples: (open) => this.createSamples(open),
+        newNote: () => this.newNote(),
+        importZip: () => this.importZip(),
+        openDaily: () => this.openDaily(),
+      });
+    }
     return h(
       'div',
       { class: 'empty-state' },
@@ -503,6 +516,18 @@ export class App implements WorkspaceHost, EmptyViewFactory {
           'div',
           { class: 'empty-actions' },
           h('button', { class: 'btn primary', onclick: () => this.newNote(), html: icon('file-plus', 14) + 'Naujas užrašas' }),
+          h('button', { class: 'btn', onclick: () => this.quickSwitcher(), html: icon('search', 14) + 'Atidaryti užrašą' }),
+          h('button', { class: 'btn', onclick: () => this.openGraph(), html: icon('graph', 14) + 'Grafas' }),
+        ),
+        h(
+          'div',
+          { class: 'shortcuts' },
+          ...[
+            ['Ctrl+O', 'greitas perjungiklis'],
+            ['Ctrl+P', 'komandų paletė'],
+            ['Ctrl+Shift+F', 'paieška'],
+            ['Alt+D', 'dienos užrašas'],
+          ].map(([k, t]) => h('div', null, h('kbd', null, k), h('span', null, t))),
         ),
       ),
     );
