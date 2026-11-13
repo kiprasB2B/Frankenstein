@@ -65,6 +65,28 @@ function wikiLinks(md: MarkdownIt, ctx: RenderContext) {
   });
 }
 
+/** ![[paveikslėlis.png]] – vault paveikslėlio įterpimas. */
+function embeds(md: MarkdownIt) {
+  md.inline.ruler.before('image', 'fr_embed', (state, silent) => {
+    const src = state.src;
+    const start = state.pos;
+    if (!src.startsWith('![[', start)) return false;
+    const end = src.indexOf(']]', start + 3);
+    if (end === -1) return false;
+    const inner = src.slice(start + 3, end);
+    if (!inner || /[\[\]\n]/.test(inner)) return false;
+    const [target, alias] = inner.split('|');
+    if (!/\.(png|jpe?g|gif|webp|svg|avif|bmp)$/i.test(target.trim())) return false;
+    if (!silent) {
+      const tok = state.push('html_inline', '', 0);
+      const width = alias && /^\d+$/.test(alias.trim()) ? ` width="${alias.trim()}"` : '';
+      tok.content = `<img class="embed" data-vault-src="${esc(target.trim())}" alt="${esc(alias && !width ? alias : target.trim())}"${width}>`;
+    }
+    state.pos = end + 2;
+    return true;
+  });
+}
+
 const TAG_AT = /^#((?:[\p{L}\p{N}_\-/])*[\p{L}_](?:[\p{L}\p{N}_\-/])*)/u;
 
 /** #žymos – paspaudžiamos. */
@@ -89,6 +111,19 @@ export function createRenderer(ctx: RenderContext) {
   md.use(taskLists);
   md.use(wikiLinks, ctx);
   md.use(tags);
+  md.use(embeds);
+
+  // Vietiniai paveikslėliai ![](kelias) – adresą nustato peržiūra (blob URL iš vault).
+  const defaultImage = md.renderer.rules.image!;
+  md.renderer.rules.image = (tokens, idx, opts, env, self) => {
+    const t = tokens[idx];
+    const src = String(t.attrGet('src') ?? '');
+    if (src && !/^(https?:|data:|blob:)/i.test(src)) {
+      t.attrSet('data-vault-src', src);
+      t.attrs = (t.attrs ?? []).filter(([k]) => k !== 'src');
+    }
+    return defaultImage(tokens, idx, opts, env, self);
+  };
 
   // Išorinės nuorodos atidaromos naujame lange.
   const defaultLinkOpen = md.renderer.rules.link_open ?? ((t, i, o, _e, s) => s.renderToken(t, i, o));

@@ -56,3 +56,20 @@ export function validateName(name: string): string | null {
   if (n.startsWith('.')) return 'Pavadinimas negali prasidėti tašku.';
   return null;
 }
+
+const IMAGE_EXT = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.avif', '.bmp'];
+
+export function isImage(p: string): boolean {
+  return IMAGE_EXT.includes(extname(p));
+}
+
+export const IMAGE_MIME: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.avif': 'image/avif',
+  '.bmp': 'image/bmp',
+};

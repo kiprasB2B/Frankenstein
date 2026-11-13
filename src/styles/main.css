@@ -1487,6 +1487,57 @@ kbd {
   animation: pulse 1s ease-in-out infinite;
 }
 
+/* ---- Paveikslėliai ---- */
+.markdown img.embed,
+.markdown img {
+  display: block;
+  max-width: 100%;
+  margin: var(--s-3) 0;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-lg);
+}
+.img-missing {
+  display: inline-block;
+  padding: 4px 8px;
+  border: 1px dashed var(--c-line-strong);
+  border-radius: var(--radius);
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+}
+.image-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  padding: var(--s-5);
+  overflow: auto;
+  background: radial-gradient(circle at 50% 45%, rgba(var(--rgb-accent), 0.05), transparent 60%);
+}
+.image-view img {
+  max-width: 100%;
+  max-height: calc(100% - 40px);
+  object-fit: contain;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 40px -10px rgba(var(--rgb-accent), 0.35);
+  cursor: zoom-in;
+}
+.image-view.zoomed {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+.image-view.zoomed img {
+  max-width: none;
+  max-height: none;
+  cursor: zoom-out;
+}
+.image-caption {
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+}
+
 /* ---- Tuščias skirtukas ---- */
 .empty-inner {
   text-align: center;

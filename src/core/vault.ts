@@ -1,6 +1,6 @@
 import type { StorageAdapter } from '../storage/adapter';
 import { Emitter } from './events';
-import { basename, dirname, isInside, isMarkdown, join, noteName, validateName } from './paths';
+import { basename, dirname, extname, IMAGE_MIME, isImage, isInside, isMarkdown, join, noteName, validateName } from './paths';
 
 export type VaultEvent =
   | { type: 'create'; path: string; kind: 'file' | 'folder' }
@@ -17,6 +17,9 @@ const CONFIG_DIR = '.frankenstein';
 export class Vault extends Emitter<{ change: VaultEvent; reload: void }> {
   private files = new Map<string, string>();
   private folderSet = new Set<string>();
+  /** Paveikslėliai ir kiti priedai (turinys neskaitomas iš anksto). */
+  private assetSet = new Set<string>();
+  private urlCache = new Map<string, string>();
 
   constructor(readonly adapter: StorageAdapter) {
     super();
@@ -29,11 +32,15 @@ export class Vault extends Emitter<{ change: VaultEvent; reload: void }> {
   async load(): Promise<void> {
     this.files.clear();
     this.folderSet.clear();
+    this.assetSet.clear();
+    this.urlCache.forEach((u) => URL.revokeObjectURL(u));
+    this.urlCache.clear();
     const entries = await this.adapter.list();
     await Promise.all(
       entries.map(async (e) => {
         if (e.kind === 'folder') this.folderSet.add(e.path);
         else if (isMarkdown(e.path)) this.files.set(e.path, await this.adapter.read(e.path));
+        else if (isImage(e.path)) this.assetSet.add(e.path);
       }),
     );
     this.emit('reload', undefined);
@@ -49,6 +56,55 @@ export class Vault extends Emitter<{ change: VaultEvent; reload: void }> {
 
   has(path: string): boolean {
     return this.files.has(path);
+  }
+
+  assets(): string[] {
+    return [...this.assetSet].sort((a, b) => a.localeCompare(b, 'lt'));
+  }
+
+  hasAsset(path: string): boolean {
+    return this.assetSet.has(path);
+  }
+
+  /** Įrašo dvejetainį priedą (pvz. įklijuotą paveikslėlį). */
+  async writeAsset(path: string, data: Uint8Array): Promise<void> {
+    await this.adapter.write(path, data);
+    this.urlCache.delete(path);
+    const existed = this.assetSet.has(path);
+    this.assetSet.add(path);
+    this.ensureParents(path);
+    if (!existed) this.emit('change', { type: 'create', path, kind: 'file' });
+  }
+
+  /** Priedo adresas naršyklei (blob URL, talpinamas). */
+  async assetUrl(path: string): Promise<string | null> {
+    if (!this.assetSet.has(path)) return null;
+    let u = this.urlCache.get(path);
+    if (!u) {
+      const data = await this.adapter.readBinary(path);
+      u = URL.createObjectURL(new Blob([data as BlobPart], { type: IMAGE_MIME[extname(path)] ?? 'application/octet-stream' }));
+      this.urlCache.set(path, u);
+    }
+    return u;
+  }
+
+  /** Randa priedą pagal kelią (santykinį su užrašu arba vault šaknimi) ar failo vardą. */
+  findAsset(ref: string, fromPath?: string): string | undefined {
+    let r = ref.trim().replace(/^\.\//, '');
+    try {
+      r = decodeURIComponent(r);
+    } catch {
+      /* paliekame */
+    }
+    if (fromPath) {
+      const rel = join(dirname(fromPath), r);
+      if (this.assetSet.has(rel)) return rel;
+    }
+    if (this.assetSet.has(join(r))) return join(r);
+    const name = basename(r).toLowerCase();
+    let best: string | undefined;
+    for (const a of this.assetSet) if (basename(a).toLowerCase() === name && (!best || a.length < best.length)) best = a;
+    return best;
   }
 
   hasFolder(path: string): boolean {
@@ -87,7 +143,7 @@ export class Vault extends Emitter<{ change: VaultEvent; reload: void }> {
   /** Grąžina laisvą kelią: „Pavadinimas.md“, „Pavadinimas 1.md“, ... */
   uniquePath(dir: string, base: string, ext = '.md'): string {
     let p = join(dir, base + ext);
-    for (let i = 1; this.files.has(p) || this.folderSet.has(p); i++) p = join(dir, `${base} ${i}${ext}`);
+    for (let i = 1; this.files.has(p) || this.folderSet.has(p) || this.assetSet.has(p); i++) p = join(dir, `${base} ${i}${ext}`);
     return p;
   }
 
@@ -109,6 +165,7 @@ export class Vault extends Emitter<{ change: VaultEvent; reload: void }> {
   async delete(path: string): Promise<void> {
     const isFolder = this.folderSet.has(path);
     await this.adapter.remove(path);
+    for (const a of [...this.assetSet]) if (isInside(a, path)) this.assetSet.delete(a);
     if (isFolder) {
       for (const f of [...this.files.keys()]) if (isInside(f, path)) this.files.delete(f);
       for (const f of [...this.folderSet]) if (isInside(f, path)) this.folderSet.delete(f);
@@ -121,7 +178,8 @@ export class Vault extends Emitter<{ change: VaultEvent; reload: void }> {
     const err = validateName(newName);
     if (err) throw new Error(err);
     const isFolder = this.folderSet.has(path);
-    const to = join(dirname(path), isFolder ? newName.trim() : newName.trim() + '.md');
+    const ext = this.assetSet.has(path) ? extname(path) : '.md';
+    const to = join(dirname(path), isFolder ? newName.trim() : newName.trim() + ext);
     return this.moveTo(path, to);
   }
 
@@ -135,9 +193,16 @@ export class Vault extends Emitter<{ change: VaultEvent; reload: void }> {
   private async moveTo(from: string, to: string): Promise<string> {
     if (from === to) return from;
     const isFolder = this.folderSet.has(from);
-    if (this.files.has(to) || this.folderSet.has(to)) throw new Error(`„${basename(to)}“ jau egzistuoja.`);
+    if (this.files.has(to) || this.folderSet.has(to) || this.assetSet.has(to)) throw new Error(`„${basename(to)}“ jau egzistuoja.`);
     await this.adapter.rename(from, to);
     const moved = new Map<string, string>();
+    for (const a of [...this.assetSet])
+      if (isInside(a, from)) {
+        this.assetSet.delete(a);
+        this.assetSet.add(to + a.slice(from.length));
+        this.urlCache.delete(a);
+        moved.set(a, to + a.slice(from.length));
+      }
     if (isFolder) {
       for (const f of [...this.folderSet])
         if (isInside(f, from)) {
@@ -151,7 +216,7 @@ export class Vault extends Emitter<{ change: VaultEvent; reload: void }> {
           this.files.set(nf, c);
           moved.set(f, nf);
         }
-    } else {
+    } else if (this.files.has(from)) {
       this.files.set(to, this.files.get(from) ?? '');
       this.files.delete(from);
       moved.set(from, to);

@@ -28,7 +28,8 @@ import { download, pickFile } from './ui/files';
 const loadZip = () => import('./core/zip');
 const loadGraph = () => import('./graph/graphView');
 import { confirmDialog } from './ui/dialogs';
-import { join } from './core/paths';
+import { join, isImage, extname } from './core/paths';
+import { EditorView } from '@codemirror/view';
 import { renderWelcome } from './ui/welcome';
 import { SAMPLES } from './samples';
 
@@ -223,14 +224,56 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     return this.renderer.render(src);
   }
 
+  resolveImage = async (src: string, fromPath?: string): Promise<string | null> => {
+    const p = this.vault.findAsset(src, fromPath);
+    return p ? this.vault.assetUrl(p) : null;
+  };
+
+  assetUrl = (path: string) => this.vault.assetUrl(path);
+
+  /** Įklijuoti / įtempti paveikslėliai išsaugomi priedų aplanke ir įterpiami kaip ![[...]]. */
+  private async saveImages(files: File[], view: EditorView, pos: number) {
+    const inserts: string[] = [];
+    for (const f of files) {
+      const ext = extname(f.name) || '.' + (f.type.split('/')[1] ?? 'png').replace('jpeg', 'jpg').replace('svg+xml', 'svg');
+      const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+      const base = f.name && !/^image\.\w+$/.test(f.name) ? f.name.slice(0, f.name.length - extname(f.name).length) : `Paveikslėlis ${stamp}`;
+      const path = this.vault.uniquePath(this.settings.attachmentFolder, base.replace(/[\\/:*?"<>|#^[\]]/g, '-'), ext);
+      await this.vault.writeAsset(path, new Uint8Array(await f.arrayBuffer()));
+      inserts.push(`![[${path.split('/').pop()}]]`);
+    }
+    if (inserts.length) {
+      view.dispatch({ changes: { from: pos, insert: inserts.join('\n') }, selection: { anchor: pos + inserts.join('\n').length } });
+      toast(inserts.length > 1 ? `Įterpta paveikslėlių: ${inserts.length}` : 'Paveikslėlis įterptas');
+    }
+  }
+
   editorExtensions(_view: NoteView): Extension[] {
-    return wikiLinkExtensions({
+    const images = (list: FileList | null | undefined) => [...(list ?? [])].filter((f) => f.type.startsWith('image/'));
+    const imageHandlers = EditorView.domEventHandlers({
+      paste: (e, view) => {
+        const files = images(e.clipboardData?.files);
+        if (!files.length) return false;
+        e.preventDefault();
+        this.saveImages(files, view, view.state.selection.main.head);
+        return true;
+      },
+      drop: (e, view) => {
+        const files = images(e.dataTransfer?.files);
+        if (!files.length) return false;
+        e.preventDefault();
+        const pos = view.posAtCoords({ x: e.clientX, y: e.clientY }) ?? view.state.selection.main.head;
+        this.saveImages(files, view, pos);
+        return true;
+      },
+    });
+    return [imageHandlers, ...wikiLinkExtensions({
       notes: () => this.vault.notes(),
       tags: () => this.index.tags().map((t) => t.tag),
       exists: (t) => !!this.index.resolve(t),
       open: (t, newTab) => this.openLink(t, { newTab }),
       openTag: (t) => this.onTagClick(t),
-    });
+    })];
   }
 
   /** Atidaro [[nuorodą]]; jei tokio užrašo nėra – sukuria jį. */
@@ -591,6 +634,11 @@ export class App implements WorkspaceHost, EmptyViewFactory {
   // ---------- Veiksmai ----------
 
   openPath(path: string, newTab = false, line?: number) {
+    if (isImage(path)) {
+      this.ws.open({ kind: 'image', path }, { newTab });
+      this.closeDrawers();
+      return;
+    }
     this.ws.openNote(path, { newTab });
     this.closeDrawers();
     if (line !== undefined) requestAnimationFrame(() => this.ws.activeNoteView()?.revealLine(line));

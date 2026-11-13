@@ -1,5 +1,5 @@
 import type { Vault } from '../core/vault';
-import { basename, dirname, isInside, noteName } from '../core/paths';
+import { basename, dirname, isImage, isInside, noteName } from '../core/paths';
 import { clear, h } from './dom';
 import { icon, iconEl } from './icons';
 import { confirmDialog, showMenu, toast } from './dialogs';
@@ -27,6 +27,7 @@ export class FileTree {
   private dragPath: string | null = null;
   private renaming: string | null = null;
   private rendering = false;
+  private renamingExt = '';
 
   constructor(
     private vault: Vault,
@@ -96,6 +97,9 @@ export class FileTree {
     for (const f of this.vault.notes()) {
       getFolder(dirname(f)).children.push({ path: f, name: noteName(f), kind: 'file', children: [] });
     }
+    for (const f of this.vault.assets()) {
+      getFolder(dirname(f)).children.push({ path: f, name: basename(f), kind: 'file', children: [] });
+    }
     const sort = (n: Node) => {
       n.children.sort((a, b) => (a.kind !== b.kind ? (a.kind === 'folder' ? -1 : 1) : a.name.localeCompare(b.name, 'lt')));
       n.children.forEach(sort);
@@ -154,7 +158,7 @@ export class FileTree {
         'data-path': n.path,
       },
       isFolder ? h('span', { class: 'tree-chevron' + (open ? ' open' : ''), html: icon('chevron-right', 12) }) : h('span', { class: 'tree-dot' }),
-      iconEl(isFolder ? (open ? 'folder-open' : 'folder') : 'file', 14),
+      iconEl(isFolder ? (open ? 'folder-open' : 'folder') : isImage(n.path) ? 'image' : 'file', 14),
       label,
       h('button', {
         class: 'icon-btn tree-more',
@@ -285,6 +289,7 @@ export class FileTree {
 
   startRename(path: string) {
     this.renaming = path;
+    this.renamingExt = isImage(path) ? path.slice(path.lastIndexOf('.')) : '';
     this.render();
     const input = this.list.querySelector<HTMLInputElement>('.tree-rename');
     input?.focus();
@@ -292,14 +297,15 @@ export class FileTree {
   }
 
   private renameInput(n: Node): HTMLInputElement {
-    const input = h('input', { class: 'tree-rename', value: n.name, spellcheck: false });
+    const base = this.renamingExt && n.name.endsWith(this.renamingExt) ? n.name.slice(0, -this.renamingExt.length) : n.name;
+    const input = h('input', { class: 'tree-rename', value: base, spellcheck: false });
     let done = false;
     const finish = async (commit: boolean) => {
       if (done) return;
       done = true;
       this.renaming = null;
       const v = input.value.trim();
-      if (commit && v && v !== n.name) {
+      if (commit && v && v !== base) {
         try {
           const np = await this.vault.rename(n.path, v);
           if (this.active === n.path) this.active = np;

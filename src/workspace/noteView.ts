@@ -134,6 +134,13 @@ export class NoteView {
 
   renderPreview() {
     this.previewEl.innerHTML = this.host.renderMarkdown(this.view.state.doc.toString());
+    this.previewEl.querySelectorAll<HTMLImageElement>('img[data-vault-src]').forEach((img) => {
+      const src = img.dataset.vaultSrc!;
+      this.host.resolveImage?.(src, this.path ?? undefined).then((u) => {
+        if (u) img.src = u;
+        else img.replaceWith(Object.assign(document.createElement('span'), { className: 'img-missing', textContent: `Paveikslėlis nerastas: ${src}` }));
+      });
+    });
   }
 
   /** Priverstinai įrašo laukiančius pakeitimus. */

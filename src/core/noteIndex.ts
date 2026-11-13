@@ -1,6 +1,6 @@
 import type { Vault, VaultEvent } from './vault';
 import { Emitter, debounce } from './events';
-import { basename, dirname, join, noteName } from './paths';
+import { basename, dirname, isMarkdown, join, noteName } from './paths';
 
 // Užrašų indeksas: wiki nuorodos, atgalinės nuorodos ir #žymos.
 
@@ -30,7 +30,11 @@ export function parseNote(src: string): ParsedNote {
   const links: LinkRef[] = [];
   const tags = new Set<string>();
   text.split('\n').forEach((line, i) => {
-    for (const m of line.matchAll(WIKILINK_RE)) links.push({ target: m[1].trim(), line: i });
+    for (const m of line.matchAll(WIKILINK_RE)) {
+      // ![[paveikslėlis.png]] – priedas, ne nuoroda į užrašą
+      if (line[m.index! - 1] === '!' && /\.(png|jpe?g|gif|webp|svg|avif|bmp)$/i.test(m[1].trim())) continue;
+      links.push({ target: m[1].trim(), line: i });
+    }
     for (const m of line.matchAll(TAG_RE)) tags.add(m[2].toLowerCase());
   });
   return { links, tags: [...tags] };
@@ -69,6 +73,7 @@ export class NoteIndex extends Emitter<{ updated: void }> {
   }, 2000);
 
   private onChange(ev: VaultEvent) {
+    if ((ev.type === 'create' || ev.type === 'modify') && !isMarkdown(ev.path)) return;
     if (ev.type === 'create' && ev.kind === 'file') this.notes.set(ev.path, parseNote(this.vault.read(ev.path)));
     else if (ev.type === 'modify') this.notes.set(ev.path, parseNote(this.vault.read(ev.path)));
     else if (ev.type === 'delete') {
@@ -76,8 +81,9 @@ export class NoteIndex extends Emitter<{ updated: void }> {
     } else if (ev.type === 'rename') {
       for (const [from, to] of ev.moved) {
         const n = this.notes.get(from);
+        if (!n) continue;
         this.notes.delete(from);
-        if (n) this.notes.set(to, n);
+        this.notes.set(to, n);
       }
       if (ev.kind === 'file') this.updateLinksAfterRename(ev.from, ev.to);
     } else return;

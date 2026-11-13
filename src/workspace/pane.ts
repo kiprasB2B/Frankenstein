@@ -1,16 +1,16 @@
 import type { EditorState } from '@codemirror/state';
 import { clear, h } from '../ui/dom';
 import { icon } from '../ui/icons';
-import { dirname, noteName } from '../core/paths';
+import { basename, dirname, noteName } from '../core/paths';
 import { NoteView } from './noteView';
-import type { EmptyViewFactory, Location, Mode, SerializedPane, WorkspaceHost } from './types';
+import { locPath, type EmptyViewFactory, type Location, type Mode, type SerializedPane, type WorkspaceHost } from './types';
 import type { Workspace } from './workspace';
 
 let tabSeq = 0;
 
 export function sameLoc(a: Location, b: Location): boolean {
   if (a.kind !== b.kind) return false;
-  return a.kind !== 'note' || a.path === (b as { path: string }).path;
+  return locPath(a) === locPath(b);
 }
 
 /** Skirtukas su savo naršymo istorija (atgal / pirmyn). */
@@ -31,6 +31,7 @@ export class Tab {
 
   get title(): string {
     if (this.loc.kind === 'note') return noteName(this.loc.path);
+    if (this.loc.kind === 'image') return basename(this.loc.path);
     if (this.loc.kind === 'graph') return 'Grafas';
     return 'Naujas skirtukas';
   }
@@ -178,6 +179,10 @@ export class Pane {
       this.body.append(this.host.renderEmpty());
       return;
     }
+    if (t.loc.kind === 'image') {
+      this.body.append(this.imageView(t.loc.path));
+      return;
+    }
     if (t.loc.kind === 'graph') {
       if (!this.graph && this.host.createGraphView) this.graph = this.host.createGraphView({
           back: () => (t.idx > 0 ? this.back() : this.closeTab(t)),
@@ -205,6 +210,19 @@ export class Pane {
     this.graph?.focus?.(path);
   }
 
+  private imageView(path: string): HTMLElement {
+    const img = h('img', { alt: basename(path) });
+    const el = h('div', { class: 'image-view' }, img, h('div', { class: 'image-caption' }, path));
+    if (!this.host.vault.hasAsset(path)) {
+      el.replaceChildren(h('div', { class: 'empty-state' }, h('p', null, 'Failas nerastas.')));
+      return el;
+    }
+    this.host.assetUrl?.(path).then((u) => u && (img.src = u));
+    let zoom = false;
+    img.addEventListener('click', () => el.classList.toggle('zoomed', (zoom = !zoom)));
+    return el;
+  }
+
   refreshGraph() {
     this.graph?.refresh?.();
   }
@@ -223,12 +241,12 @@ export class Pane {
           class: 'tab' + (t === this.active ? ' active' : ''),
           role: 'tab',
           'aria-selected': String(t === this.active),
-          title: t.loc.kind === 'note' ? t.loc.path : t.title,
+          title: locPath(t.loc) ?? t.title,
           draggable: true,
           onclick: () => this.activate(t),
           onauxclick: (e: MouseEvent) => e.button === 1 && this.closeTab(t),
         },
-        h('span', { class: 'tab-icon', html: icon(t.loc.kind === 'graph' ? 'graph' : t.loc.kind === 'note' ? 'file' : 'spark', 13) }),
+        h('span', { class: 'tab-icon', html: icon(t.loc.kind === 'graph' ? 'graph' : t.loc.kind === 'note' ? 'file' : t.loc.kind === 'image' ? 'image' : 'spark', 13) }),
         h('span', { class: 'tab-title' }, t.title),
         h('button', {
           class: 'tab-close',
@@ -281,10 +299,11 @@ export class Pane {
       btn('arrow-right', 'Pirmyn (Alt+→)', () => this.forward(), '', !t || t.idx >= t.history.length - 1),
     );
     const crumbs = h('div', { class: 'crumbs' });
-    if (t?.loc.kind === 'note') {
-      const dir = dirname(t.loc.path);
+    if (t && locPath(t.loc)) {
+      const p = locPath(t.loc)!;
+      const dir = dirname(p);
       if (dir) dir.split('/').forEach((seg) => crumbs.append(h('span', { class: 'crumb' }, seg), h('span', { class: 'crumb-sep' }, '/')));
-      crumbs.append(h('span', { class: 'crumb current' }, noteName(t.loc.path)));
+      crumbs.append(h('span', { class: 'crumb current' }, t.title));
     } else if (t) crumbs.append(h('span', { class: 'crumb current' }, t.title));
     this.header.append(crumbs, h('span', { class: 'save-status' }));
     if (t?.loc.kind === 'note') {
@@ -327,11 +346,13 @@ export class Pane {
   onRename(moved: Map<string, string>) {
     let changed = false;
     for (const t of this.tabs) {
-      t.history = t.history.map((l) => (l.kind === 'note' && moved.has(l.path) ? { kind: 'note', path: moved.get(l.path)! } : l));
-      if (t.loc.kind === 'note' && moved.has(t.loc.path)) {
-        t.loc = { kind: 'note', path: moved.get(t.loc.path)! };
+      const remap = (l: Location): Location => (locPath(l) && moved.has(locPath(l)!) ? ({ ...l, path: moved.get(locPath(l)!)! } as Location) : l);
+      t.history = t.history.map(remap);
+      const p = locPath(t.loc);
+      if (p && moved.has(p)) {
+        t.loc = remap(t.loc);
         changed = true;
-        if (this.noteView?.tab === t) this.noteView.setTitle(t.loc.path);
+        if (this.noteView?.tab === t) this.noteView.setTitle(moved.get(p)!);
       }
     }
     if (changed) this.renderChrome();
@@ -340,9 +361,10 @@ export class Pane {
   onDelete(path: string, isFolder: boolean) {
     const gone = (p: string) => (isFolder ? p.startsWith(path + '/') : p === path);
     for (const t of [...this.tabs]) {
-      t.history = t.history.filter((l) => l.kind !== 'note' || !gone(l.path));
-      t.idx = Math.min(t.idx, t.history.length - 1);
-      if (t.loc.kind === 'note' && gone(t.loc.path)) {
+      t.history = t.history.filter((l) => !locPath(l) || !gone(locPath(l)!));
+      t.idx = Math.max(0, Math.min(t.idx, t.history.length - 1));
+      const p = locPath(t.loc);
+      if (p && gone(p)) {
         if (this.noteView?.tab === t) this.noteView.tab = null;
         this.closeTab(t);
       }
@@ -368,7 +390,7 @@ export class Pane {
 
   restore(s: SerializedPane) {
     this.tabs = s.tabs
-      .filter((st) => st.loc.kind !== 'note' || this.host.vault.has(st.loc.path))
+      .filter((st) => (st.loc.kind !== 'note' || this.host.vault.has(st.loc.path)) && (st.loc.kind !== 'image' || this.host.vault.hasAsset(st.loc.path)))
       .map((st) => new Tab(this, st.loc, st.mode));
     const a = this.tabs[s.active] ?? this.tabs[0] ?? null;
     if (a) this.activate(a, true);
