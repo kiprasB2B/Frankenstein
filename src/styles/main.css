@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Frankenstein – „duomenų laboratorijos“ vizualinė identitetas
+   ADAM – „duomenų laboratorijos“ vizualinė identitetas
    Paletė (60 / 30 / 10):
      60% Deep Black  #050506 – fonai
      30% Mist Grey   #E4E4E4 – tekstas, plonos linijos, ikonos
@@ -259,9 +259,10 @@ input {
 }
 .landing-title {
   margin: var(--s-3) 0 var(--s-2);
-  font-size: 34px;
+  font-size: 40px;
   font-weight: 300;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.6em;
+  margin-right: -0.6em; /* kompensuoja paskutinės raidės tarpą centruojant */
 }
 .landing-sub {
   margin: 0 auto var(--s-6);
@@ -357,7 +358,7 @@ input {
 }
 .brand-name {
   font-weight: 500;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.45em;
   font-size: var(--fs-sm);
   text-transform: uppercase;
 }

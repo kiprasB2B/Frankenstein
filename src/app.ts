@@ -165,7 +165,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       'header',
       { class: 'topbar' },
       h('button', { class: 'icon-btn only-mobile', title: 'Failai', html: icon('menu', 18), onclick: () => this.toggleSide('left') }),
-      h('div', { class: 'brand' }, h('span', { class: 'brand-mark', html: LOGO }), h('span', { class: 'brand-name' }, 'Frankenstein')),
+      h('div', { class: 'brand' }, h('span', { class: 'brand-mark', html: LOGO }), h('span', { class: 'brand-name' }, 'ADAM')),
       vaultLabel,
       h('div', { class: 'topbar-spacer' }),
       this.topActions,
@@ -480,7 +480,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     this.tree.setActive(p);
     this.backlinks.setPath(p);
     if (p) this.ws.panes.forEach((x) => x.focusGraph(p));
-    document.title = p ? `${p.split('/').pop()!.replace(/\.md$/, '')} – Frankenstein` : 'Frankenstein';
+    document.title = p ? `${p.split('/').pop()!.replace(/\.md$/, '')} – ADAM` : 'ADAM';
   }
 
   persist = debounce(() => {

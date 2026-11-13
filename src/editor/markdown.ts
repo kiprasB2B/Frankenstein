@@ -1,7 +1,7 @@
 import MarkdownItCtor from 'markdown-it';
 import type { StateCore } from 'markdown-it';
 
-// Peržiūros režimo atvaizdavimas per markdown-it su Frankenstein plėtiniais.
+// Peržiūros režimo atvaizdavimas per markdown-it su ADAM plėtiniais.
 
 export interface RenderContext {
   /** Grąžina užrašo kelią pagal wiki nuorodos tikslą arba undefined. */

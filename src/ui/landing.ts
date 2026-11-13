@@ -34,7 +34,7 @@ export function renderLanding(opts: LandingOptions): { el: HTMLElement; destroy(
       'div',
       { class: 'landing-inner' },
       h('div', { class: 'landing-logo', html: LOGO }),
-      h('h1', { class: 'landing-title' }, 'Frankenstein'),
+      h('h1', { class: 'landing-title', 'aria-label': 'ADAM' }, 'ADAM'),
       h('p', { class: 'landing-sub' }, 'Susietų minčių laboratorija. Markdown užrašai, wiki nuorodos ir švytintis žinių grafas – tiesiog naršyklėje.'),
       h(
         'div',

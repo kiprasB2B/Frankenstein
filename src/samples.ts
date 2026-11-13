@@ -9,8 +9,8 @@ export interface Sample {
 export const SAMPLES: Sample[] = [
   {
     name: 'Sveiki atvykę',
-    blurb: 'Pradžios taškas: kas yra Frankenstein ir nuo ko pradėti.',
-    body: `Tai jūsų **Frankenstein** laboratorija – vieta, kur mintys susijungia į tinklą.
+    blurb: 'Pradžios taškas: kas yra ADAM ir nuo ko pradėti.',
+    body: `Tai jūsų **ADAM** laboratorija – vieta, kur mintys susijungia į tinklą.
 
 Kiekvienas užrašas yra paprastas \`.md\` failas. Užrašus jungia [[Wiki nuorodos]], o visą tinklą matote [[Grafo vaizdas|grafe]].
 
@@ -57,7 +57,7 @@ Jungiklis **Vietinis** rodo tik aktyvaus užrašo aplinką. Žr. [[Žymos]].
     blurb: 'Grupuokite užrašus #žymomis ir filtruokite.',
     body: `Bet kur tekste parašykite \`#žyma\`. Visas žymas rasite kairiajame skydelyje (# ikona).
 
-Paspaudus žymą matysite jos užrašus, **Shift** + paspaudimas – keli filtrai iš karto. Hierarchija: \`#projektai/frankenstein\`.
+Paspaudus žymą matysite jos užrašus, **Shift** + paspaudimas – keli filtrai iš karto. Hierarchija: \`#projektai/adam\`.
 
 Susiję: [[Grafo vaizdas]], [[Sveiki atvykę]].
 

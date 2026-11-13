@@ -1,6 +1,6 @@
-# Frankenstein
+# ADAM
 
-**Frankenstein** – susietų Markdown užrašų laboratorija naršyklėje. Ji panaši į Obsidian, bet turi savo „duomenų laboratorijos“ vizualinę identitetą: grynai juodą foną, plonas šviesiai pilkas linijas ir melsvai žydras švytinčias detales.
+**ADAM** – susietų Markdown užrašų laboratorija naršyklėje. Ji panaši į Obsidian, bet turi savo „duomenų laboratorijos“ vizualinę identitetą: grynai juodą foną, plonas šviesiai pilkas linijas ir melsvai žydras švytinčias detales.
 
 🔗 **Gyva versija:** https://kiprasb2b.github.io/Frankenstein/
 
@@ -14,7 +14,7 @@
 - **Interaktyvus 2D grafas**: mazgus galima tempti, priartinti, paspaudus atidaromas užrašas, užvedus paryškinami kaimynai. Yra filtras, „vietinio grafo“ ir neegzistuojančių užrašų jungikliai.
 - **Paieška**: greitas perjungiklis (`Ctrl+O`) ir pilno teksto paieška (`Ctrl+Shift+F`), kuri nekreipia dėmesio į diakritiką.
 - **Komandų paletė** (`Ctrl+P`).
-- **#žymos** su žymų debesiu ir filtravimu (Shift – kelios žymos). Galimos ir hierarchinės žymos: `#projektai/frankenstein`.
+- **#žymos** su žymų debesiu ir filtravimu (Shift – kelios žymos). Galimos ir hierarchinės žymos: `#projektai/adam`.
 - **Dienos užrašas** vienu paspaudimu (`Alt+D`), pavadinimas – šiandienos data (`YYYY-MM-DD`).
 - **Skirtukai** ir **ekrano padalijimas** į dvi dalis (`Ctrl+\`).
 - **Varnelės** `- [ ]` pažymimos paspaudus peržiūroje, o pakeitimas įrašomas į failą.
