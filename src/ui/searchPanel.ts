@@ -57,7 +57,9 @@ export class SearchPanel {
   }
 
   private search(q: string): Hit[] {
-    const terms = fold(q).split(/\s+/).filter(Boolean);
+    // „kabutėse“ – tiksli frazė, kitaip – visi žodžiai
+    const phrase = /^"(.+)"$/.exec(q.trim());
+    const terms = phrase ? [fold(phrase[1])] : fold(q).split(/\s+/).filter(Boolean);
     if (!terms.length) return [];
     const hits: Hit[] = [];
     for (const path of this.vault.notes()) {

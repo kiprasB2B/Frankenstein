@@ -95,9 +95,10 @@ export function wikiLinkExtensions(host: LinkHost): Extension[] {
       },
     }),
     EditorView.theme({
-      '.cm-wikilink': { color: 'var(--c-accent)', cursor: 'pointer', textShadow: '0 0 6px rgba(var(--rgb-accent), .35)' },
-      '.cm-wikilink.unresolved': { color: 'var(--c-text-dim)', textShadow: 'none', textDecoration: 'underline dashed rgba(var(--rgb-fg), .3)' },
-      '.cm-tag': { color: 'var(--c-accent)', cursor: 'pointer' },
+      // Vidinė nuoroda – Secondary Blue; nesukurtas užrašas – „Dėmesio“; žyma – „Kategorijos“
+      '.cm-wikilink': { color: 'var(--c-secondary)', cursor: 'pointer' },
+      '.cm-wikilink.unresolved': { color: 'var(--c-warning)', textDecoration: 'underline dashed rgba(var(--rgb-warning), .5)' },
+      '.cm-tag': { color: 'var(--c-category)', cursor: 'pointer' },
     }),
   ];
 }

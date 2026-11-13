@@ -83,7 +83,7 @@ export const labHighlight = syntaxHighlighting(
     { tag: t.strong, fontWeight: '600' },
     { tag: t.emphasis, fontStyle: 'italic' },
     { tag: t.strikethrough, textDecoration: 'line-through', color: 'var(--c-text-faint)' },
-    { tag: t.link, color: 'var(--c-accent)' },
+    { tag: t.link, color: 'var(--c-info)' },
     { tag: t.url, color: 'var(--c-text-faint)' },
     { tag: t.monospace, fontFamily: 'var(--font-mono)', fontSize: '0.88em', color: 'var(--c-text)' },
     { tag: t.processingInstruction, color: 'var(--c-text-faint)' },

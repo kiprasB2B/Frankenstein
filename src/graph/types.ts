@@ -8,6 +8,9 @@ export interface GraphNodeData {
   label: string;
   exists: boolean;
   tags: string[];
+  /** Kategorijos spalva „r,g,b“ (pagal aplanką); be jos – pagrindinė spalva. */
+  color?: string;
+  group?: string;
 }
 
 export interface GraphLinkData {

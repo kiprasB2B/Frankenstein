@@ -1,5 +1,6 @@
 import { h } from '../ui/dom';
 import { icon } from '../ui/icons';
+import { cssVar, hexToRgb } from '../ui/theme';
 import { ForceLayout2D } from './forceLayout2d';
 import { CanvasRenderer2D } from './canvasRenderer2d';
 import { ForceLayout3D } from './forceLayout3d';
@@ -118,6 +119,8 @@ export class GraphView {
         h('div', { class: 'gp-row' }, toggle('Vietinis', 'local', 'Rodyti tik aktyvaus užrašo aplinką'), toggle('Neegzistuojantys', 'missing', 'Rodyti nuorodas į dar nesukurtus užrašus')),
         h('div', { class: 'gp-label' }, 'Režimas'),
         h('div', { class: 'gp-row' }, modeBtn, spinBtn),
+        h('div', { class: 'gp-label' }, 'Spalvos – aplankai'),
+        h('div', { class: 'gp-legend' }),
       ),
       h('div', { class: 'graph-hint' }, this.info, h('span', { class: 'graph-help' })),
     );
@@ -136,8 +139,47 @@ export class GraphView {
     setTimeout(() => this.fit(), 700);
   }
 
+  /** Spalvina mazgus pagal viršutinį aplanką – kategorinė paletė (--cat-1…8). */
+  private colorize(data: GraphData): GraphData {
+    const palette = Array.from({ length: 8 }, (_, i) => hexToRgb(cssVar(`--cat-${i + 1}`)));
+    const groups = new Map<string, string>();
+    const sorted = [...new Set(data.nodes.filter((n) => n.exists && n.id.includes('/')).map((n) => n.id.split('/')[0]))].sort((a, b) =>
+      a.localeCompare(b, 'lt'),
+    );
+    // Šakninis lygis – pagrindinė ADAM spalva, aplankai – likusios kategorinės
+    sorted.forEach((g, i) => groups.set(g, palette[(i % 7) + 1]));
+    this.legend = [{ name: 'Šakninis aplankas', rgb: palette[0] }, ...sorted.map((g) => ({ name: g, rgb: groups.get(g)! }))];
+    return {
+      ...data,
+      nodes: data.nodes.map((n) => {
+        if (!n.exists) return n;
+        const g = n.id.includes('/') ? n.id.split('/')[0] : '';
+        return { ...n, group: g, color: g ? groups.get(g) : palette[0] };
+      }),
+    };
+  }
+
+  private legend: { name: string; rgb: string }[] = [];
+
+  private renderLegend() {
+    const el = this.el?.querySelector('.gp-legend');
+    if (!el) return;
+    el.innerHTML = '';
+    for (const l of this.legend) {
+      const row = document.createElement('div');
+      row.innerHTML = `<i style="background:rgb(${l.rgb});color:rgb(${l.rgb})"></i><span></span>`;
+      row.querySelector('span')!.textContent = l.name;
+      el.append(row);
+    }
+    if (prefs.missing) {
+      const row = document.createElement('div');
+      row.innerHTML = `<i style="background:var(--c-neutral);color:var(--c-neutral)"></i><span>Dar nesukurti užrašai</span>`;
+      el.append(row);
+    }
+  }
+
   private filteredData(): GraphData {
-    let data = this.opts.getData();
+    let data = this.colorize(this.opts.getData());
     if (!prefs.missing) {
       const ok = new Set(data.nodes.filter((n) => n.exists).map((n) => n.id));
       data = { nodes: data.nodes.filter((n) => ok.has(n.id)), links: data.links.filter((l) => ok.has(l.source) && ok.has(l.target)) };
@@ -199,6 +241,7 @@ export class GraphView {
     }
     this.state.active = this.opts.getActive();
     this.info.textContent = `${data.nodes.filter((n) => n.exists).length} užraš. · ${data.links.length} ryš.`;
+    this.renderLegend();
     this.dirty = true;
   }
 

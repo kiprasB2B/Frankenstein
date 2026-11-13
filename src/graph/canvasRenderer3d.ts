@@ -26,9 +26,17 @@ export class CanvasRenderer3D implements Renderer {
     fg: hexToRgb(cssVar('--c-fg')),
     accent: hexToRgb(cssVar('--c-accent')),
     glow: hexToRgb(cssVar('--c-glow')),
+    neutral: hexToRgb(cssVar('--c-neutral')),
     bg: cssVar('--c-bg'),
   };
   private sprites = { accent: glowSprite(this.colors.accent), glow: glowSprite(this.colors.glow) };
+  private spriteCache = new Map<string, HTMLCanvasElement>();
+  private spriteFor(rgb?: string) {
+    if (!rgb) return this.sprites.accent;
+    let sp = this.spriteCache.get(rgb);
+    if (!sp) this.spriteCache.set(rgb, (sp = glowSprite(rgb)));
+    return sp;
+  }
   private proj = new Map<SimNode, Projected>();
 
   constructor() {
@@ -142,9 +150,9 @@ export class CanvasRenderer3D implements Renderer {
       if (n.exists && visible) {
         const strong = isActive || n === focus;
         const gs = r * (strong ? 9 : 6);
-        ctx.drawImage(strong ? this.sprites.glow : this.sprites.accent, p.sx - gs / 2, p.sy - gs / 2, gs, gs);
+        ctx.drawImage(strong ? this.sprites.glow : this.spriteFor(n.color), p.sx - gs / 2, p.sy - gs / 2, gs, gs);
       }
-      ctx.fillStyle = !n.exists ? `rgba(${colors.fg},0.35)` : isActive || n === focus ? `rgb(${colors.glow})` : `rgb(${colors.accent})`;
+      ctx.fillStyle = !n.exists ? `rgba(${colors.neutral},0.55)` : isActive || n === focus ? `rgb(${colors.glow})` : `rgb(${n.color ?? colors.accent})`;
       ctx.beginPath();
       ctx.arc(p.sx, p.sy, isActive ? r * 1.25 : r, 0, Math.PI * 2);
       ctx.fill();

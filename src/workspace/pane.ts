@@ -270,7 +270,7 @@ export class Pane {
           onauxclick: (e: MouseEvent) => e.button === 1 && this.closeTab(t),
         },
         h('span', {
-          class: 'tab-icon',
+          class: 'tab-icon ' + t.loc.kind,
           html: icon({ graph: 'graph', note: 'file', image: 'image', files: 'folder', empty: 'spark' }[t.loc.kind], 13),
         }),
         h('span', { class: 'tab-title' }, t.title),
@@ -364,7 +364,13 @@ export class Pane {
     const el = this.header.querySelector('.save-status');
     if (!el) return;
     el.className = 'save-status ' + this.status;
-    el.textContent = this.active?.loc.kind !== 'note' ? '' : this.status === 'saving' ? 'Saugoma…' : this.status === 'error' ? 'Klaida' : 'Išsaugota';
+    if (this.active?.loc.kind !== 'note') {
+      el.innerHTML = '';
+      return;
+    }
+    // Būsena: spalva + piktograma + tekstas
+    const [ic, text] = this.status === 'saving' ? ['refresh', 'Saugoma…'] : this.status === 'error' ? ['alert-octagon', 'Klaida'] : ['check', 'Išsaugota'];
+    el.innerHTML = icon(ic, 12) + `<span>${text}</span>`;
   }
 
   // ---------- Vault įvykiai ----------

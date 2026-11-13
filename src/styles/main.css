@@ -1,39 +1,78 @@
 /* ==========================================================================
-   ADAM – „duomenų laboratorijos“ vizualinė identitetas
-   Paletė (60 / 30 / 10):
-     60% Deep Black  #050506 – fonai
-     30% Mist Grey   #E4E4E4 – tekstas, plonos linijos, ikonos
-     10% Glow Blue   #6BB7EA (+ šviesiausias taškas #7CFDF7) – tik tai, kas aktyvu ar spaudžiama
-   Visa paletė keičiama čia, :root bloke.
+   ADAM – Functional Intelligence Color System
+   Spalvos turi funkciją, ne tik puošia. Visa paletė keičiama čia, :root bloke.
+
+   Tapatybė ir pagrindas
+     Bazinis fonas         #061522   fonai, skydeliai, redaktorius
+     Pagrindinis paviršius #0B2538   kortelės, dialogai, iškylantys langai
+     Pagrindinis tekstas   #ECF8FC   tekstas, plonos linijos (su skaidrumu)
+     Primary Cyan          #48DDF2   ADAM tapatybė, aktyvus elementas, paspaudžiama
+     Secondary Blue        #80C9E8   vidinės [[nuorodos]], antriniai akcentai
+
+   Semantika
+     Informacija   #5599FF   duomenys, šaltiniai, išorinės nuorodos
+     Analitika     #A78BFA   grafas, ryšiai, analizė
+     Sėkmė         #45CB8B   atliktos užduotys, išsaugota
+     Dėmesio       #F5B94C   laukia veiksmo, nesukurti užrašai, saugoma
+     Kritinė       #F05B63   klaidos, trynimas, nutrūkusios nuorodos
+     Neutralūs     #A3B0BC   archyvas, foninė informacija
+     Kategorijos   #25BFAF   #žymos, papildomos duomenų grupės (+ --cat-* grafui)
+
+   Prieinamumas: visi akcentai ir tekstas ≥ 4,5:1 (WCAG AA) ant fono ir paviršiaus;
+   spalva niekada nėra vienintelis ženklas – būsenas lydi tekstas ir piktograma.
    ========================================================================== */
 :root {
-  --c-bg: #050506;
-  --c-fg: #e4e4e4;
-  --c-accent: #6bb7ea;
-  --c-glow: #7cfdf7;
+  --c-bg: #061522;
+  --c-fg: #ecf8fc;
+  --c-accent: #48ddf2; /* Primary Cyan */
+  --c-glow: #a6f0fa; /* šviesiausias švytėjimo taškas */
+  --c-secondary: #80c9e8;
 
-  --rgb-bg: 5, 5, 6;
-  --rgb-fg: 228, 228, 228;
-  --rgb-accent: 107, 183, 234;
-  --rgb-glow: 124, 253, 247;
+  --c-info: #5599ff;
+  --c-analytics: #a78bfa;
+  --c-success: #45cb8b;
+  --c-warning: #f5b94c;
+  --c-danger: #f05b63;
+  --c-neutral: #a3b0bc;
+  --c-category: #25bfaf;
 
-  /* Paviršiai – tos pačios juodos atspalviai */
-  --c-surface: rgba(var(--rgb-fg), 0.025);
-  --c-surface-2: rgba(var(--rgb-fg), 0.05);
-  --c-raised: #0b0b0d;
+  /* Kategorinė paletė (grafo grupės) – gerai atskiriamos, be įspėjimų spalvų */
+  --cat-1: #48ddf2;
+  --cat-2: #a78bfa;
+  --cat-3: #25bfaf;
+  --cat-4: #5599ff;
+  --cat-5: #ff7eb6;
+  --cat-6: #80c9e8;
+  --cat-7: #45cb8b;
+  --cat-8: #d4bbff;
 
-  /* Tekstas ir linijos – Mist Grey su sumažintu skaidrumu */
+  --rgb-bg: 6, 21, 34;
+  --rgb-fg: 236, 248, 252;
+  --rgb-accent: 72, 221, 242;
+  --rgb-glow: 166, 240, 250;
+  --rgb-info: 85, 153, 255;
+  --rgb-analytics: 167, 139, 250;
+  --rgb-success: 69, 203, 139;
+  --rgb-warning: 245, 185, 76;
+  --rgb-danger: 240, 91, 99;
+  --rgb-category: 37, 191, 175;
+
+  /* Paviršiai */
+  --c-surface: rgba(var(--rgb-fg), 0.03);
+  --c-surface-2: rgba(var(--rgb-fg), 0.06);
+  --c-raised: #0b2538;
+
+  /* Tekstas ir linijos (kontrastas ≥ 4,5:1) */
   --c-text: var(--c-fg);
-  --c-text-dim: rgba(var(--rgb-fg), 0.62);
-  --c-text-faint: rgba(var(--rgb-fg), 0.38);
+  --c-text-dim: rgba(var(--rgb-fg), 0.78);
+  --c-text-faint: rgba(var(--rgb-fg), 0.58);
   --c-line: rgba(var(--rgb-fg), 0.1);
   --c-line-strong: rgba(var(--rgb-fg), 0.2);
-  --c-danger: #e4e4e4;
 
-  /* Švytėjimas */
-  --glow-sm: 0 0 6px rgba(var(--rgb-accent), 0.45);
-  --glow-md: 0 0 14px rgba(var(--rgb-accent), 0.4), 0 0 2px rgba(var(--rgb-glow), 0.7);
-  --glow-text: 0 0 8px rgba(var(--rgb-accent), 0.6);
+  /* Švytėjimas – santūrus, „infrastruktūra“, ne neoninė reklama */
+  --glow-sm: 0 0 6px rgba(var(--rgb-accent), 0.35);
+  --glow-md: 0 0 14px rgba(var(--rgb-accent), 0.3), 0 0 2px rgba(var(--rgb-glow), 0.6);
+  --glow-text: 0 0 8px rgba(var(--rgb-accent), 0.45);
 
   /* Tipografija */
   --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -125,6 +164,13 @@ input {
   color: var(--c-text-dim);
 }
 
+.cm-editor:focus-visible,
+.cm-content:focus-visible,
+.cm-scroller:focus-visible,
+.ex-body:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
 :focus-visible {
   outline: 1px solid var(--c-accent);
   outline-offset: 1px;
@@ -2472,7 +2518,7 @@ select.input option {
   padding: var(--s-3);
   border: 1px solid var(--c-line-strong);
   border-radius: var(--radius-lg);
-  background: rgba(11, 11, 13, 0.94);
+  background: rgba(11, 37, 56, 0.95);
   backdrop-filter: blur(6px);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
   opacity: 0;
@@ -2562,6 +2608,274 @@ select.input option {
   .ex-search {
     width: 140px;
   }
+}
+
+
+/* ==========================================================================
+   Semantinės spalvos (Functional Intelligence Color System)
+   ========================================================================== */
+/* Kritinė: trynimas, klaidos */
+.btn.danger {
+  border-color: rgba(var(--rgb-danger), 0.6);
+  color: var(--c-danger);
+}
+.btn.danger:hover {
+  border-color: var(--c-danger);
+  background: rgba(var(--rgb-danger), 0.12);
+  color: var(--c-danger);
+  box-shadow: 0 0 8px rgba(var(--rgb-danger), 0.35);
+}
+.ctx-item.danger,
+.ctx-item.danger .icon-wrap {
+  color: var(--c-danger);
+}
+.ctx-item.danger:hover,
+.ctx-item.danger:hover .icon-wrap {
+  color: var(--c-danger);
+  background: rgba(var(--rgb-danger), 0.12);
+}
+
+/* Išsaugojimo būsena: dėmesio → sėkmė / kritinė */
+.save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.save-status.saving {
+  color: var(--c-warning);
+}
+.save-status.saved {
+  color: var(--c-success);
+}
+.save-status.error {
+  color: var(--c-danger);
+}
+
+/* Nuorodos: informacija (išorinės), Secondary Blue (vidinės), dėmesio (nesukurtos) */
+.markdown a {
+  color: var(--c-info);
+  border-bottom-color: rgba(var(--rgb-info), 0.35);
+}
+.markdown a:hover {
+  color: var(--c-info);
+  border-color: var(--c-info);
+  text-shadow: none;
+}
+.markdown a.wikilink {
+  color: var(--c-secondary);
+  border-bottom-color: rgba(128, 201, 232, 0.35);
+}
+.markdown a.wikilink:hover {
+  color: var(--c-glow);
+  border-color: var(--c-glow);
+}
+.markdown a.unresolved,
+.markdown a.wikilink.unresolved {
+  color: var(--c-warning);
+  border-bottom: 1px dashed rgba(var(--rgb-warning), 0.55);
+}
+.bl-out {
+  color: var(--c-secondary);
+}
+.bl-out.unresolved {
+  color: var(--c-warning);
+}
+.bl-line mark {
+  color: var(--c-secondary);
+  text-shadow: none;
+}
+
+/* Kategorijos: #žymos */
+.markdown a.tag {
+  color: var(--c-category);
+  border: 1px solid rgba(var(--rgb-category), 0.45);
+}
+.tag-chip:hover {
+  border-color: rgba(var(--rgb-category), 0.7);
+  color: var(--c-category);
+  box-shadow: 0 0 6px rgba(var(--rgb-category), 0.35);
+}
+.tag-chip.on {
+  border-color: var(--c-category);
+  background: rgba(var(--rgb-category), 0.16);
+  color: var(--c-fg);
+  box-shadow: 0 0 10px rgba(var(--rgb-category), 0.35);
+}
+
+/* Sėkmė: atliktos užduotys */
+.task-check:checked {
+  border-color: var(--c-success);
+  background: var(--c-success);
+  box-shadow: 0 0 6px rgba(var(--rgb-success), 0.4);
+}
+.markdown li.task-item.done {
+  text-decoration: line-through rgba(var(--rgb-success), 0.5);
+}
+
+/* Pranešimai: spalva + piktograma + tekstas */
+.toast {
+  border-left-width: 3px;
+}
+.toast.info {
+  border-color: rgba(var(--rgb-accent), 0.45);
+}
+.toast.success {
+  border-color: rgba(var(--rgb-success), 0.55);
+  box-shadow: 0 0 8px rgba(var(--rgb-success), 0.25);
+}
+.toast.success .icon-wrap {
+  color: var(--c-success);
+}
+.toast.warning {
+  border-color: rgba(var(--rgb-warning), 0.6);
+  box-shadow: 0 0 8px rgba(var(--rgb-warning), 0.2);
+}
+.toast.warning .icon-wrap {
+  color: var(--c-warning);
+}
+.toast.error {
+  border-color: rgba(var(--rgb-danger), 0.65);
+  box-shadow: 0 0 8px rgba(var(--rgb-danger), 0.25);
+}
+.toast.error .icon-wrap {
+  color: var(--c-danger);
+}
+
+/* Analitika: grafo modulis */
+.tab-icon .icon[data-k],
+.tab .tab-icon.graph,
+.ribbon-btn.analytics:hover {
+  color: var(--c-analytics);
+}
+.ribbon-btn.analytics:hover {
+  background: rgba(var(--rgb-analytics), 0.1);
+  box-shadow: 0 0 6px rgba(var(--rgb-analytics), 0.35);
+}
+.graph-view.panel-open .graph-gear {
+  color: var(--c-analytics);
+  box-shadow: 0 0 6px rgba(var(--rgb-analytics), 0.35);
+}
+
+/* Failų tipai naršyklėje */
+.ex-ic.image,
+.ex-tile-thumb.image {
+  color: var(--c-category);
+}
+.ex-ic.note {
+  color: var(--c-neutral);
+}
+
+/* ---- Vault būsenos skydelis (naršyklėje) ---- */
+.ex-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--s-2);
+  margin-bottom: var(--s-4);
+}
+.st-card {
+  --tone: var(--rgb-accent);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--s-3);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-lg);
+  background: var(--c-raised);
+  text-align: left;
+  overflow: hidden;
+  animation: rise 260ms var(--ease) both;
+  transition: all var(--dur) var(--ease);
+}
+.st-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: rgb(var(--tone));
+  box-shadow: 0 0 8px rgba(var(--tone), 0.6);
+}
+button.st-card {
+  cursor: pointer;
+}
+button.st-card:hover {
+  border-color: rgba(var(--tone), 0.55);
+  box-shadow: 0 0 12px rgba(var(--tone), 0.2);
+  transform: translateY(-1px);
+}
+.st-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(var(--tone));
+}
+.st-value {
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--c-fg);
+  font-variant-numeric: tabular-nums;
+}
+.st-sub {
+  font-size: var(--fs-xs);
+  color: var(--c-text-faint);
+}
+.st-bar {
+  height: 4px;
+  margin-top: 2px;
+  border-radius: 2px;
+  background: rgba(var(--tone), 0.15);
+  overflow: hidden;
+}
+.st-bar span {
+  display: block;
+  height: 100%;
+  background: rgb(var(--tone));
+  box-shadow: 0 0 6px rgba(var(--tone), 0.7);
+}
+.st-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgb(var(--tone));
+  box-shadow: 0 0 6px rgb(var(--tone));
+  animation: pulse 2s ease-in-out infinite;
+}
+.tone-primary { --tone: var(--rgb-accent); }
+.tone-info { --tone: var(--rgb-info); }
+.tone-analytics { --tone: var(--rgb-analytics); }
+.tone-success { --tone: var(--rgb-success); }
+.tone-warning { --tone: var(--rgb-warning); }
+.tone-danger { --tone: var(--rgb-danger); }
+.tone-neutral { --tone: 163, 176, 188; }
+.tone-category { --tone: var(--rgb-category); }
+
+/* ---- Grafo legenda ---- */
+.gp-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 160px;
+  overflow: auto;
+  font-size: var(--fs-xs);
+  color: var(--c-text-dim);
+}
+.gp-legend div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gp-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 5px currentColor;
 }
 
 /* ==========================================================================

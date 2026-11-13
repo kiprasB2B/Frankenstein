@@ -76,15 +76,19 @@ export function confirmDialog(title: string, text: string, okText = 'Patvirtinti
 
 let toastHost: HTMLElement | null = null;
 
-export function toast(text: string, kind: 'info' | 'error' = 'info') {
-  if (!toastHost) document.body.append((toastHost = h('div', { class: 'toasts' })));
-  const t = h('div', { class: `toast ${kind}` }, iconEl(kind === 'error' ? 'x' : 'spark', 14), h('span', null, text));
+export type ToastKind = 'info' | 'success' | 'warning' | 'error';
+const TOAST_ICON: Record<ToastKind, string> = { info: 'spark', success: 'check', warning: 'alert', error: 'alert-octagon' };
+
+/** Pranešimas: spalva + piktograma + tekstas (spalva niekada nėra vienintelis ženklas). */
+export function toast(text: string, kind: ToastKind = 'info') {
+  if (!toastHost) document.body.append((toastHost = h('div', { class: 'toasts', role: 'status', 'aria-live': 'polite' })));
+  const t = h('div', { class: `toast ${kind}` }, iconEl(TOAST_ICON[kind], 14), h('span', null, text));
   toastHost.append(t);
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => {
     t.classList.remove('show');
     setTimeout(() => t.remove(), 250);
-  }, kind === 'error' ? 5000 : 2600);
+  }, kind === 'error' || kind === 'warning' ? 5000 : 2600);
 }
 
 // ---- Kontekstinis meniu ----

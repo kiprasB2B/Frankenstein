@@ -21,6 +21,22 @@ export interface ExplorerHost {
   newFolder(dir: string): Promise<string>;
   moveTo(path: string): void;
   renderWelcome(): HTMLElement;
+  stats?(): VaultStats;
+  search?(query: string): void;
+  openGraph?(): void;
+}
+
+export interface VaultStats {
+  storage: string;
+  notes: number;
+  assets: number;
+  folders: number;
+  links: number;
+  tags: number;
+  tasksDone: number;
+  tasksOpen: number;
+  broken: number;
+  orphans: number;
 }
 
 interface Item {
@@ -243,7 +259,10 @@ export class ExplorerView {
       this.updateStatus();
       return;
     }
-    if (!this.dir && !searching) this.body.append(this.recentSection());
+    if (!this.dir && !searching) {
+      if (this.host.stats) this.body.append(this.statusSection(this.host.stats()));
+      this.body.append(this.recentSection());
+    }
     this.items = this.collect();
     for (const p of [...this.selected]) if (!this.items.some((i) => i.path === p)) this.selected.delete(p);
 
@@ -268,6 +287,42 @@ export class ExplorerView {
     else this.body.append(this.list(searching));
     this.body.scrollTop = scroll;
     this.updateStatus();
+  }
+
+  /**
+   * ADAM būsenos skydelis: kiekviena kortelė turi funkcinę spalvą, piktogramą ir tekstą,
+   * kad būseną būtų galima suprasti neskaitant viso turinio (ir ne vien iš spalvos).
+   */
+  private statusSection(st: VaultStats): HTMLElement {
+    const total = st.tasksDone + st.tasksOpen;
+    const pct = total ? Math.round((st.tasksDone / total) * 100) : 0;
+    const card = (tone: string, ic: string, label: string, value: string, sub: string, onClick?: () => void, bar?: number) => {
+      const inner = [
+        h('span', { class: 'st-label', html: (ic === 'dot' ? '<span class="st-dot"></span>' : icon(ic, 12)) + `<span>${label}</span>` }),
+        h('span', { class: 'st-value' }, value),
+        bar !== undefined ? h('span', { class: 'st-bar', 'aria-hidden': 'true' }, h('span', { style: `width:${bar}%` })) : null,
+        h('span', { class: 'st-sub' }, sub),
+      ];
+      return onClick
+        ? h('button', { class: `st-card tone-${tone}`, onclick: onClick, title: label + ': ' + value + ' – ' + sub }, ...inner)
+        : h('div', { class: `st-card tone-${tone}` }, ...inner);
+    };
+    const grid = h(
+      'div',
+      { class: 'ex-status-grid', role: 'list', 'aria-label': 'Vault būsena' },
+      card('primary', 'dot', 'ADAM sistema', 'Online', st.storage),
+      card('info', 'file', 'Užrašai', String(st.notes), `${st.assets} paveiksl. · ${st.folders} aplank.`),
+      card('analytics', 'graph', 'Analitika', `${st.links} ryš.`, `${st.tags} žymų · atidaryti grafą`, this.host.openGraph),
+      card('success', 'check', 'Atlikta', total ? `${st.tasksDone} / ${total}` : '—', total ? `${pct} % užduočių atlikta` : 'Užduočių dar nėra', () => this.host.search?.('"[x]"'), total ? pct : undefined),
+      st.tasksOpen
+        ? card('warning', 'alert', 'Laukia veiksmo', String(st.tasksOpen), 'neatliktos užduotys – peržiūrėti', () => this.host.search?.('"[ ]"'))
+        : card('success', 'check', 'Laukia veiksmo', '0', 'Visos užduotys atliktos'),
+      st.broken
+        ? card('danger', 'alert-octagon', 'Nutrūkusios nuorodos', String(st.broken), 'nuorodos į nesukurtus užrašus', this.host.openGraph)
+        : card('success', 'link', 'Nuorodos', '0 klaidų', 'Visos nuorodos veikia'),
+      card('neutral', 'spark', 'Izoliuoti', String(st.orphans), 'užrašai be jokių ryšių'),
+    );
+    return h('div', null, h('div', { class: 'ex-section-head' }, h('span', null, 'Būsena')), grid);
   }
 
   private recentSection(): HTMLElement {

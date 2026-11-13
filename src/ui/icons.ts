@@ -44,6 +44,9 @@ const P: Record<string, string> = {
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6"/><circle cx="12" cy="17" r=".6"/>',
   wand: '<path d="M4 20L15 9M13 7l2-2 4 4-2 2z"/><path d="M6 4v3M4.5 5.5h3M19 14v3M17.5 15.5h3"/>',
   'chevrons-up-down': '<path d="M8 9l4-4 4 4M8 15l4 4 4-4"/>',
+  alert: '<path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.3" r=".6"/>',
+  'alert-octagon': '<path d="M8.3 3h7.4L21 8.3v7.4L15.7 21H8.3L3 15.7V8.3z"/><path d="M12 7.5v5.5"/><circle cx="12" cy="16.3" r=".6"/>',
+  activity: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
   zoom: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>',
 };
 

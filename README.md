@@ -150,7 +150,35 @@ src/
   styles/main.css        visa paletė :root kintamuosiuose
 ```
 
-**Paletę** pakeisite vienoje vietoje – `src/styles/main.css` faile, `:root` bloke (`--c-bg`, `--c-fg`, `--c-accent`, `--c-glow` ir jų `--rgb-*` atitikmenys). Tuos pačius kintamuosius naudoja ir grafo bei dalelių piešiniai.
+**Spalvos – ADAM Functional Intelligence Color System.** Kiekviena spalva turi funkciją. Paletė keičiama vienoje vietoje – `src/styles/main.css` faile, `:root` bloke. Tuos pačius kintamuosius naudoja ir grafo bei dalelių piešiniai.
+
+| Vaidmuo | Kintamasis | HEX | Kur naudojama |
+|---|---|---|---|
+| Bazinis fonas | `--c-bg` | `#061522` | fonai, skydeliai, redaktorius |
+| Paviršius | `--c-raised` | `#0B2538` | kortelės, dialogai, meniu |
+| Tekstas | `--c-fg` | `#ECF8FC` | tekstas, plonos linijos |
+| Primary Cyan | `--c-accent` | `#48DDF2` | ADAM tapatybė, aktyvūs ir paspaudžiami elementai |
+| Secondary Blue | `--c-secondary` | `#80C9E8` | vidinės [[nuorodos]] |
+| Informacija | `--c-info` | `#5599FF` | išorinės nuorodos, užrašų skaičius |
+| Analitika | `--c-analytics` | `#A78BFA` | grafas, ryšiai |
+| Sėkmė | `--c-success` | `#45CB8B` | atliktos užduotys, „Išsaugota“ |
+| Dėmesio | `--c-warning` | `#F5B94C` | laukiančios užduotys, nesukurti užrašai, „Saugoma…“ |
+| Kritinė | `--c-danger` | `#F05B63` | klaidos, trynimas, nutrūkusios nuorodos |
+| Neutralūs | `--c-neutral` | `#A3B0BC` | izoliuoti ir dar nesukurti užrašai grafe |
+| Kategorijos | `--c-category`, `--cat-1…8` | `#25BFAF` … | #žymos, grafo aplankų grupės |
+
+Visas tekstas ir akcentai atitinka WCAG AA kontrastą (≥ 4,5:1) ant fono ir paviršiaus. Spalva niekada nėra vienintelis ženklas: būsenas lydi tekstas ir piktograma.
+
+Failų naršyklėje rodomas **būsenos skydelis**:
+- **ADAM sistema** – Online;
+- **užrašai**;
+- **analitika** (ryšiai, žymos);
+- **atlikta** su progreso juosta;
+- **laukia veiksmo** – neatliktos užduotys;
+- **nutrūkusios nuorodos**;
+- **izoliuoti užrašai**.
+
+Kortelės paspaudžiamos: atidaro paiešką arba grafą.
 
 **2D / 3D grafas**: grafo kodas padalytas į `Layout` (pozicijų skaičiavimą: `ForceLayout2D` su d3-force, `ForceLayout3D` su d3-force-3d) ir `Renderer` (piešimą: `CanvasRenderer2D`, `CanvasRenderer3D` su perspektyva) sąsajas (`src/graph/types.ts`). Režimas parenkamas `createEngine()` funkcijoje. Norint pereiti prie WebGL (pvz. three.js), užtenka naujo `Renderer` įgyvendinimo.
 

@@ -167,7 +167,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       rb('panel-left', 'Rodyti / slėpti šoninį skydelį', () => this.toggleSide('left'), 'ribbon-toggle'),
       h('div', { class: 'ribbon-group' },
         rb('home', 'Failų naršyklė (Alt+E)', () => this.openExplorer()),
-        rb('graph', 'Grafo vaizdas (Ctrl+G)', () => this.openGraph()),
+        rb('graph', 'Grafo vaizdas (Ctrl+G)', () => this.openGraph(), 'analytics'),
         rb('search', 'Greitai atidaryti užrašą (Ctrl+O)', () => this.quickSwitcher()),
         rb('calendar', 'Šiandienos dienos užrašas (Alt+D)', () => this.openDaily()),
         rb('file-plus', 'Naujas užrašas (Alt+N)', () => this.newNote(this.currentDir())),
@@ -290,10 +290,38 @@ export class App implements WorkspaceHost, EmptyViewFactory {
         newFolder: (d) => this.vault.createFolder(d),
         moveTo: (p) => this.moveToPicker(p),
         renderWelcome: () => this.renderWelcomeScreen(),
+        stats: () => this.vaultStats(),
+        search: (q) => this.openSearch(q),
+        openGraph: () => this.openGraph(),
       },
       dir,
     );
     return { el: ex.el, destroy: () => ex.destroy() };
+  }
+
+  /** Vault suvestinė būsenos skydeliui. */
+  vaultStats() {
+    const notes = this.vault.notes();
+    let done = 0,
+      open = 0;
+    for (const p of notes) {
+      for (const m of this.vault.read(p).matchAll(/^\s*(?:[-*+]|\d+[.)])\s+\[([ xX])\]/gm)) m[1] === ' ' ? open++ : done++;
+    }
+    const g = this.index.graph();
+    const linked = new Set<string>();
+    for (const l of g.links) linked.add(l.source).add(l.target);
+    return {
+      storage: (this.vault.adapter.kind === 'fs' ? 'Aplankas · ' : 'Naršyklė · ') + this.vault.name,
+      notes: notes.length,
+      assets: this.vault.assets().length,
+      folders: this.vault.folders().length,
+      links: g.links.length,
+      tags: this.index.tags().length,
+      tasksDone: done,
+      tasksOpen: open,
+      broken: g.nodes.filter((n) => !n.exists).length,
+      orphans: notes.filter((p) => !linked.has(p)).length,
+    };
   }
 
   /** Iš naršyklės failai atidaromi atskirame skirtuke – pati naršyklė lieka atidaryta. */
@@ -337,8 +365,8 @@ export class App implements WorkspaceHost, EmptyViewFactory {
         toast(`Nepavyko įkelti „${f.name}“: ${(e as Error).message}`, 'error');
       }
     }
-    if (ok) toast(ok === 1 ? `Įkelta: ${last.split('/').pop()}` : `Įkelta failų: ${ok}`);
-    if (skipped.length) toast(`Praleista (nepalaikomas tipas): ${skipped.slice(0, 3).join(', ')}${skipped.length > 3 ? '…' : ''}`, 'error');
+    if (ok) toast(ok === 1 ? `Įkelta: ${last.split('/').pop()}` : `Įkelta failų: ${ok}`, 'success');
+    if (skipped.length) toast(`Praleista (nepalaikomas tipas): ${skipped.slice(0, 3).join(', ')}${skipped.length > 3 ? '…' : ''}`, 'warning');
     if (ok === 1 && files.length === 1) this.openPath(last);
   }
 
@@ -392,7 +420,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     }
     if (inserts.length) {
       view.dispatch({ changes: { from: pos, insert: inserts.join('\n') }, selection: { anchor: pos + inserts.join('\n').length } });
-      toast(inserts.length > 1 ? `Įterpta paveikslėlių: ${inserts.length}` : 'Paveikslėlis įterptas');
+      toast(inserts.length > 1 ? `Įterpta paveikslėlių: ${inserts.length}` : 'Paveikslėlis įterptas', 'success');
     }
   }
 
@@ -432,7 +460,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       try {
         await this.vault.write(p, '');
         path = p;
-        toast(`Sukurtas užrašas „${target}“`);
+        toast(`Sukurtas užrašas „${target}“`, 'success');
       } catch (e) {
         toast('Nepavyko sukurti užrašo: ' + (e as Error).message, 'error');
         return;
@@ -577,7 +605,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       onPick: async (it) => {
         try {
           await this.vault.move(path, it.id);
-          toast(`Perkelta į „${it.id || 'šaknį'}“`);
+          toast(`Perkelta į „${it.id || 'šaknį'}“`, 'success');
         } catch (e) {
           toast((e as Error).message, 'error');
         }
@@ -627,7 +655,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     this.settings = Object.assign(this.settings, next); // tas pats objektas – jį naudoja atidaryti redaktoriai
     this.applySettings();
     await this.vault.writeJSON('settings.json', this.settings);
-    toast('Nustatymai išsaugoti');
+    toast('Nustatymai išsaugoti', 'success');
   }
 
   /** Vėlesnių etapų komandos. */
@@ -656,7 +684,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     const path = join(this.settings.dailyFolder, name + '.md');
     if (!this.vault.has(path)) {
       await this.vault.write(path, fillTemplate(this.settings.dailyTemplate ?? DEFAULT_SETTINGS.dailyTemplate));
-      toast('Sukurtas šiandienos užrašas');
+      toast('Sukurtas šiandienos užrašas', 'success');
     }
     this.openPath(path);
   }
@@ -666,7 +694,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       const p = s.name + '.md';
       if (!this.vault.has(p)) await this.vault.write(p, s.body + '\n');
     }
-    toast('Sukurti pavyzdiniai užrašai');
+    toast('Sukurti pavyzdiniai užrašai', 'success');
     this.openPath(open + '.md');
   }
 
@@ -695,7 +723,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       const { exportVault } = await loadZip();
       const blob = await exportVault(this.vault);
       download(blob, `${this.vault.name.replace(/[^\p{L}\p{N}_-]+/gu, '-')}-${App.todayName()}.zip`);
-      toast('Vault eksportuotas');
+      toast('Vault eksportuotas', 'success');
     } catch (e) {
       toast('Eksportas nepavyko: ' + (e as Error).message, 'error');
     }
@@ -717,7 +745,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
       this.ws.flush();
       const n = await importEntries(this.vault, entries);
       this.ws.panes.forEach((p) => p.renderBody());
-      toast(`Importuota failų: ${n}`);
+      toast(`Importuota failų: ${n}`, 'success');
     } catch (e) {
       toast('Importas nepavyko: ' + (e as Error).message, 'error');
     }
@@ -733,7 +761,7 @@ export class App implements WorkspaceHost, EmptyViewFactory {
     this.ws.flush();
     await this.vault.load();
     this.ws.panes.forEach((p) => p.renderBody());
-    toast('Vault perskaitytas iš naujo');
+    toast('Vault perskaitytas iš naujo', 'success');
   }
 
   onActiveChange() {
